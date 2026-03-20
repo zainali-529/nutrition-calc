@@ -188,6 +188,8 @@ export function NutritionCalculator() {
                 <Step3Formula
                   language={language}
                   formula={formula}
+                  selectedAnimal={selectedAnimal}
+                  selectedStage={selectedStage}
                   onFormulaChange={handleFormulaChange}
                   onNext={handleNextStep}
                   onBack={handleBackStep}
@@ -205,6 +207,8 @@ export function NutritionCalculator() {
                 <Step4Status
                   language={language}
                   formula={formula}
+                  selectedAnimal={selectedAnimal}
+                  selectedStage={selectedStage}
                   onNext={handleNextStep}
                   onBack={handleBackStep}
                 />

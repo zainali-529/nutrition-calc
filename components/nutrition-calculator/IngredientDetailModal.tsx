@@ -65,7 +65,7 @@ export function IngredientDetailModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 max-h-[90vh] overflow-y-auto"
           >
             <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-2xl border border-white/40 overflow-hidden">
               {/* Header */}
@@ -112,7 +112,7 @@ export function IngredientDetailModal({
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     {/* CP */}
-                    {ingredient.cp !== null && (
+                    {ingredient.cp !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -128,7 +128,7 @@ export function IngredientDetailModal({
                     )}
 
                     {/* ME */}
-                    {ingredient.me !== null && (
+                    {ingredient.me !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -137,12 +137,42 @@ export function IngredientDetailModal({
                       >
                         <div className="text-xs font-semibold text-amber-600">ME</div>
                         <div className="text-xl font-bold text-amber-900">{ingredient.me}</div>
-                        <div className="text-xs text-amber-600/70">MJ/kg</div>
+                        <div className="text-xs text-amber-600/70">Mcal/kg</div>
+                      </motion.div>
+                    )}
+
+                    {/* DM */}
+                    {ingredient.dm !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-lg p-3 border border-slate-200/50"
+                      >
+                        <div className="text-xs font-semibold text-slate-600">DM</div>
+                        <div className="text-xl font-bold text-slate-900">{ingredient.dm}%</div>
+                        <div className="text-xs text-slate-600/70">
+                          {language === 'en' ? 'Dry Matter' : 'خشک مادہ'}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* TDN */}
+                    {ingredient.tdn !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-lg p-3 border border-indigo-200/50"
+                      >
+                        <div className="text-xs font-semibold text-indigo-600">TDN</div>
+                        <div className="text-xl font-bold text-indigo-900">{ingredient.tdn}%</div>
+                        <div className="text-xs text-indigo-600/70">TDN</div>
                       </motion.div>
                     )}
 
                     {/* NDF */}
-                    {ingredient.ndf !== null && (
+                    {ingredient.ndf !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -158,7 +188,7 @@ export function IngredientDetailModal({
                     )}
 
                     {/* ADF */}
-                    {ingredient.adf !== null && (
+                    {ingredient.adf !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -174,7 +204,7 @@ export function IngredientDetailModal({
                     )}
 
                     {/* Fat */}
-                    {ingredient.fat !== null && (
+                    {ingredient.fat !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -191,8 +221,24 @@ export function IngredientDetailModal({
                       </motion.div>
                     )}
 
+                    {/* Starch */}
+                    {ingredient.starch !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="bg-gradient-to-br from-yellow-50 to-yellow-100/50 rounded-lg p-3 border border-yellow-200/50"
+                      >
+                        <div className="text-xs font-semibold text-yellow-600">
+                          {language === 'en' ? 'Starch' : 'نشاستہ'}
+                        </div>
+                        <div className="text-xl font-bold text-yellow-900">{ingredient.starch}%</div>
+                        <div className="text-xs text-yellow-600/70">Starch</div>
+                      </motion.div>
+                    )}
+
                     {/* Calcium */}
-                    {ingredient.ca !== null && (
+                    {ingredient.ca !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -208,7 +254,7 @@ export function IngredientDetailModal({
                     )}
 
                     {/* Phosphorus */}
-                    {ingredient.p !== null && (
+                    {ingredient.p !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -222,6 +268,39 @@ export function IngredientDetailModal({
                         </div>
                       </motion.div>
                     )}
+
+                    {/* Ash */}
+                    {ingredient.ash !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-lg p-3 border border-gray-200/50"
+                      >
+                        <div className="text-xs font-semibold text-gray-600">Ash</div>
+                        <div className="text-xl font-bold text-gray-900">{ingredient.ash}%</div>
+                        <div className="text-xs text-gray-600/70">
+                          {language === 'en' ? 'Ash' : 'راکھ'}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Price */}
+                     {ingredient.price !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.45 }}
+                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-200/50 col-span-2"
+                      >
+                        <div className="text-xs font-semibold text-emerald-600">Price</div>
+                        <div className="text-xl font-bold text-emerald-900">₨ {ingredient.price}</div>
+                        <div className="text-xs text-emerald-600/70">
+                          {language === 'en' ? 'Per kg' : 'فی کلو'}
+                        </div>
+                      </motion.div>
+                    )}
+
                   </div>
                 </div>
 

@@ -4,10 +4,13 @@ import { motion } from 'framer-motion';
 import { FormulaItem, calculateNutrients, calculateTotalCost, calculateTotalWeight } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NUTRITION_RANGES } from '@/lib/constants';
 
 interface Step3FormulaProps {
   language: 'en' | 'ur';
   formula: FormulaItem[];
+  selectedAnimal: string | null;
+  selectedStage: number;
   onFormulaChange: (formula: FormulaItem[]) => void;
   onNext: () => void;
   onBack: () => void;
@@ -18,23 +21,35 @@ function NutrientBadge({
   value,
   unit,
   color,
+  range,
 }: {
   label: string;
   value: number;
   unit: string;
   color: string;
+  range?: { min: number; max: number };
 }) {
+  const isInRange = range ? value >= range.min && value <= range.max : false;
+  const bgColor = isInRange ? 'bg-green-500 text-white' : color;
+  const labelColor = isInRange ? 'text-green-50' : 'text-gray-600';
+  const valueColor = isInRange ? 'text-white' : 'text-gray-900';
+
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className={`${color} px-4 py-3 rounded-lg flex flex-col items-center gap-1 text-center`}
+      className={`${bgColor} px-4 py-3 rounded-lg flex flex-col items-center gap-1 text-center transition-colors duration-300 border ${isInRange ? 'border-green-600' : 'border-transparent'}`}
     >
-      <span className="text-xs font-semibold text-gray-600">{label}</span>
-      <span className="text-lg font-bold text-gray-900">
+      <span className={`text-xs font-semibold ${labelColor}`}>{label}</span>
+      <span className={`text-lg font-bold ${valueColor}`}>
         {value.toFixed(1)}
         <span className="text-xs ml-1">{unit}</span>
       </span>
+      {range && (
+        <span className={`text-[10px] ${isInRange ? 'text-green-100' : 'text-gray-400'}`}>
+          {range.min}-{range.max}{unit}
+        </span>
+      )}
     </motion.div>
   );
 }
@@ -42,6 +57,8 @@ function NutrientBadge({
 export function Step3Formula({
   language,
   formula,
+  selectedAnimal,
+  selectedStage,
   onFormulaChange,
   onNext,
   onBack,
@@ -49,6 +66,10 @@ export function Step3Formula({
   const nutrients = calculateNutrients(formula);
   const totalWeight = calculateTotalWeight(formula);
   const totalCost = calculateTotalCost(formula);
+
+  // Get ranges for selected animal and stage
+  const animalRanges = selectedAnimal ? NUTRITION_RANGES[selectedAnimal as keyof typeof NUTRITION_RANGES] : null;
+  const ranges = animalRanges ? animalRanges[selectedStage] : null;
 
   const handleWeightChange = (index: number, newWeight: number) => {
     const updated = [...formula];
@@ -77,12 +98,15 @@ export function Step3Formula({
     guar: '📦',
     sfm: '🟠',
     rsm: '🟤',
+    canola_meal: '🌻',
+    sesame_cake: '🌱',
     straw: '🟫',
     hay: '🟩',
     silage: '🟢',
     bypassFat: '🛢️',
     molasses: '🍯',
     wheat_bran: '📦',
+    limestone: '🪨',
     mineral_mix: '💊',
   };
 
@@ -93,11 +117,16 @@ export function Step3Formula({
     total: language === 'en' ? 'Total' : 'کل',
     nutrients: language === 'en' ? 'Nutritional Summary' : 'غذائی خلاصہ',
     protein: language === 'en' ? 'Protein' : 'پروٹین',
-    energy: language === 'en' ? 'Energy' : 'توانائی',
-    fiber: language === 'en' ? 'Fiber' : 'فائبر',
+    energy: language === 'en' ? 'Energy (ME)' : 'توانائی (ME)',
+    fiber: language === 'en' ? 'Fiber (NDF)' : 'فائبر (NDF)',
     fat: language === 'en' ? 'Fat' : 'چکنائی',
+    dm: language === 'en' ? 'Dry Matter' : 'خشک مادہ',
+    tdn: language === 'en' ? 'TDN' : 'TDN',
+    starch: language === 'en' ? 'Starch' : 'نشاستہ',
+    ash: language === 'en' ? 'Ash' : 'راکھ',
     next: language === 'en' ? 'Next' : 'اگلا',
     back: language === 'en' ? 'Back' : 'واپس',
+    costPerKg: language === 'en' ? 'Cost/kg' : 'قیمت فی کلو',
   };
 
   return (
@@ -120,11 +149,20 @@ export function Step3Formula({
         animate={{ opacity: 1 }}
         className="grid grid-cols-2 sm:grid-cols-4 gap-3"
       >
-        <NutrientBadge label={t.protein} value={nutrients.protein} unit="%" color="bg-blue-50" />
-        <NutrientBadge label={t.energy} value={nutrients.energy} unit="MJ/kg" color="bg-amber-50" />
-        <NutrientBadge label={t.fiber} value={nutrients.fiber} unit="%" color="bg-green-50" />
+        <NutrientBadge label={t.protein} value={nutrients.protein} unit="%" color="bg-blue-50" range={ranges?.protein} />
+        <NutrientBadge label={t.energy} value={nutrients.energy} unit="Mcal" color="bg-amber-50" range={ranges?.energy} />
+        <NutrientBadge label={t.tdn} value={nutrients.tdn} unit="%" color="bg-purple-50" range={ranges?.tdn} />
+        <NutrientBadge label={t.fiber} value={nutrients.fiber} unit="%" color="bg-green-50" range={ranges?.fiber} />
+        
+        <NutrientBadge label={t.dm} value={nutrients.dm} unit="%" color="bg-slate-50" />
+        <NutrientBadge label={t.starch} value={nutrients.starch} unit="%" color="bg-yellow-50" />
         <NutrientBadge label={t.fat} value={nutrients.fat} unit="%" color="bg-orange-50" />
+        <NutrientBadge label={t.ash} value={nutrients.ash} unit="%" color="bg-gray-50" />
       </motion.div>
+      
+      <div className="text-center text-xs text-gray-500 -mt-2">
+        {language === 'en' ? '*All values on Dry Matter (DM) basis' : '*تمام اقدار خشک مادہ (DM) کی بنیاد پر'}
+      </div>
 
       {/* Formula Items */}
       <div className="space-y-3">
@@ -157,7 +195,7 @@ export function Step3Formula({
                     onChange={(e) => handleWeightChange(idx, parseFloat(e.target.value) || 0)}
                     min="0"
                     step="0.1"
-                    className="w-16 text-sm"
+                    className="w-24 text-sm"
                   />
                 </div>
 
@@ -170,7 +208,7 @@ export function Step3Formula({
                     placeholder="0"
                     min="0"
                     step="1"
-                    className="w-16 text-sm"
+                    className="w-24 text-sm"
                   />
                 </div>
 
@@ -201,6 +239,9 @@ export function Step3Formula({
           <div>
             <p className="text-xs text-gray-600">{t.total} Cost</p>
             <p className="text-2xl font-bold text-emerald-700">₨{totalCost.toLocaleString('en-PK')}</p>
+            <p className="text-xs text-emerald-600 mt-1">
+              {t.costPerKg}: ₨{nutrients.perKgPrice}
+            </p>
           </div>
         </div>
       </div>

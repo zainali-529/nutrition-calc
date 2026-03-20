@@ -3,10 +3,13 @@
 import { motion } from 'framer-motion';
 import { FormulaItem, calculateNutrients, generateRecommendations } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
+import { NUTRITION_RANGES } from '@/lib/constants';
 
 interface Step4StatusProps {
   language: 'en' | 'ur';
   formula: FormulaItem[];
+  selectedAnimal: string | null;
+  selectedStage: number;
   onNext: () => void;
   onBack: () => void;
 }
@@ -46,9 +49,21 @@ function StatusCard({
   );
 }
 
-export function Step4Status({ language, formula, onNext, onBack }: Step4StatusProps) {
+export function Step4Status({ 
+  language, 
+  formula, 
+  selectedAnimal, 
+  selectedStage, 
+  onNext, 
+  onBack 
+}: Step4StatusProps) {
   const nutrients = calculateNutrients(formula);
-  const recommendations = generateRecommendations(nutrients);
+  
+  // Get ranges for selected animal and stage
+  const animalRanges = selectedAnimal ? NUTRITION_RANGES[selectedAnimal as keyof typeof NUTRITION_RANGES] : null;
+  const ranges = animalRanges ? animalRanges[selectedStage] : null;
+
+  const recommendations = generateRecommendations(nutrients, ranges);
 
   const t = {
     nutritionStatus: language === 'en' ? 'Nutrition Status' : 'غذائی حالت',
@@ -80,45 +95,76 @@ export function Step4Status({ language, formula, onNext, onBack }: Step4StatusPr
       </div>
 
       {/* Current Nutrient Levels */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           {
-            label: t.optimal,
+            label: 'protein',
             icon: '✅',
             value: `${nutrients.protein.toFixed(1)}%`,
-            sublabel: 'Protein',
+            sublabel: 'Protein (DM)',
+            range: ranges?.protein,
           },
           {
-            label: t.optimal,
+            label: 'energy',
             icon: '⚡',
-            value: `${nutrients.energy.toFixed(1)} MJ`,
-            sublabel: 'Energy',
+            value: `${nutrients.energy.toFixed(2)} Mcal`,
+            sublabel: 'Energy (ME) (DM)',
+            range: ranges?.energy,
           },
           {
-            label: t.optimal,
+            label: 'tdn',
+            icon: '📈',
+            value: `${nutrients.tdn.toFixed(1)}%`,
+            sublabel: 'TDN (DM)',
+            range: ranges?.tdn,
+          },
+          {
+            label: 'fiber',
             icon: '🌾',
             value: `${nutrients.fiber.toFixed(1)}%`,
-            sublabel: 'Fiber',
+            sublabel: 'NDF (DM)',
+            range: ranges?.fiber,
           },
           {
-            label: t.optimal,
-            icon: '🛢️',
-            value: `${nutrients.fat.toFixed(1)}%`,
-            sublabel: 'Fat',
+            label: 'calcium',
+            icon: '🦴',
+            value: `${nutrients.calcium.toFixed(2)}%`,
+            sublabel: 'Calcium (DM)',
+            range: ranges?.calcium,
           },
-        ].map((item, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: idx * 0.1 }}
-            className="bg-white rounded-lg p-3 border border-gray-200 flex flex-col items-center gap-1"
-          >
-            <span className="text-2xl">{item.icon}</span>
-            <span className="text-lg font-bold text-gray-900">{item.value}</span>
-            <span className="text-xs text-gray-600">{item.sublabel}</span>
-          </motion.div>
-        ))}
+          {
+            label: 'phosphorus',
+            icon: '🧪',
+            value: `${nutrients.phosphorus.toFixed(2)}%`,
+            sublabel: 'Phosphorus (DM)',
+            range: ranges?.phosphorus,
+          },
+        ].map((item, idx) => {
+          const isInRange = item.range ? nutrients[item.label as keyof typeof nutrients] >= item.range.min && nutrients[item.label as keyof typeof nutrients] <= item.range.max : true;
+          
+          return (
+            <motion.div
+              key={idx}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: idx * 0.1 }}
+              className={`rounded-lg p-3 border flex flex-col items-center gap-1 transition-colors ${
+                isInRange 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-white border-gray-200'
+              }`}
+            >
+              <span className="text-2xl">{isInRange ? '✅' : item.icon}</span>
+              <span className={`text-lg font-bold ${isInRange ? 'text-green-900' : 'text-gray-900'}`}>{item.value}</span>
+              <span className={`text-xs ${isInRange ? 'text-green-700' : 'text-gray-600'}`}>{item.sublabel}</span>
+              {item.range && (
+                <span className={`text-[10px] ${isInRange ? 'text-green-600' : 'text-gray-400'}`}>
+                  {item.range.min}-{item.range.max}
+                </span>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Recommendations */}
@@ -141,7 +187,7 @@ export function Step4Status({ language, formula, onNext, onBack }: Step4StatusPr
                 status={rec.status as any}
                 title={rec.nutrient}
                 description={rec.recommendation}
-                icon={statusIcons[rec.status as any]}
+                icon={statusIcons[rec.status as any] || '❓'}
                 index={idx}
               />
             );

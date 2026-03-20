@@ -61,6 +61,9 @@ function IngredientCard({
     bypassFat: '🛢️',
     molasses: '🍯',
     wheat_bran: '📦',
+    canola_meal: '🌻',
+    sesame_cake: '🌱',
+    limestone: '🪨',
   };
 
   return (
