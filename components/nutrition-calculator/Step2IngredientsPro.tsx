@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { INGREDIENT_CATEGORIES, NUTRITION_DATA } from '@/lib/constants';
+import { INGREDIENT_CATEGORIES, getIngredient } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Info, X } from 'lucide-react';
@@ -303,7 +303,7 @@ export function Step2IngredientsPro({
             {/* Ingredients Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {category.ingredients.map((ingredientKey) => {
-                const data = NUTRITION_DATA[ingredientKey as keyof typeof NUTRITION_DATA];
+                const data = getIngredient(ingredientKey);
                 const isSelected = selected.includes(ingredientKey);
                 const quality = ingredientQualities[ingredientKey] || null;
 
@@ -329,7 +329,7 @@ export function Step2IngredientsPro({
       {/* Info Modal */}
       <IngredientInfoModal
         ingredient={selectedInfoIngredient}
-        data={selectedInfoIngredient ? NUTRITION_DATA[selectedInfoIngredient as keyof typeof NUTRITION_DATA] : null}
+        data={selectedInfoIngredient ? getIngredient(selectedInfoIngredient) ?? null : null}
         language={language}
         onClose={() => setSelectedInfoIngredient(null)}
       />

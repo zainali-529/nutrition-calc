@@ -1,15 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FormulaItem, exportFormulaAsText } from '@/lib/calculations';
+import { FormulaItem, calculateNutrients, exportFormulaAsText } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { saveFormula } from '@/lib/savedFormulas';
+import { getOverride } from '@/lib/ingredientOverrides';
 
 interface Step5ActionsProps {
   language: 'en' | 'ur';
   formula: FormulaItem[];
-  animal: string;
-  stage: string;
+  animal: string;                                    // display label, e.g. "Dairy Cow"
+  stage: string;                                     // display label, e.g. "Early Lactation (0-100 days)"
+  animalId: string | null;                           // for restoration on load
+  stageIndex: number;                                // for restoration on load
+  chosenIngredients: Record<string, string[]>;      // for restoration on load
   onReset: () => void;
 }
 
@@ -56,6 +61,9 @@ export function Step5Actions({
   formula,
   animal,
   stage,
+  animalId,
+  stageIndex,
+  chosenIngredients,
   onReset,
 }: Step5ActionsProps) {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -81,17 +89,30 @@ export function Step5Actions({
   const handleSave = async () => {
     setLoadingAction('save');
     try {
-      const saved = JSON.parse(localStorage.getItem('saved_formulas') || '[]');
-      const newEntry = {
-        id: Date.now(),
-        animal,
-        stage,
+      const n = calculateNutrients(formula);
+
+      // Capture ingredient overrides active right now for conflict detection on load
+      const activeOverrides: Record<string, Record<string, number>> = {};
+      for (const item of formula) {
+        const ovr = getOverride(item.key);
+        if (ovr) activeOverrides[item.key] = ovr as Record<string, number>;
+      }
+
+      saveFormula({
+        animalId,
+        animalLabel:       animal,
+        stageIndex,
+        stageLabel:        stage,
+        chosenIngredients,
         formula,
-        date: new Date().toLocaleDateString(),
-        timestamp: Date.now(),
-      };
-      saved.unshift(newEntry);
-      localStorage.setItem('saved_formulas', JSON.stringify(saved));
+        totals: {
+          weight:     n.totalAsFed,
+          perKgPrice: n.perKgPrice,
+          protein:    n.protein,
+          energy:     n.energy,
+        },
+        ingredientOverrides: activeOverrides,
+      });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (error) {

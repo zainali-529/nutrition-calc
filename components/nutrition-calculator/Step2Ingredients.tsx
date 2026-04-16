@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { INGREDIENT_CATEGORIES, NUTRITION_DATA } from '@/lib/constants';
+import { INGREDIENT_CATEGORIES, getIngredient, getIngredientIcon } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Info } from 'lucide-react';
@@ -45,27 +45,6 @@ function IngredientCard({
     return colors[level] || colors.med;
   };
 
-  const iconMap: Record<string, string> = {
-    corn: '🌽',
-    barley: '🌾',
-    millet: '🟡',
-    rice_polish: '⚪',
-    sbm: '🫘',
-    csm: '🟨',
-    guar: '📦',
-    sfm: '🌻',
-    rsm: '🟤',
-    straw: '🟫',
-    hay: '🟩',
-    silage: '🟢',
-    bypassFat: '🛢️',
-    molasses: '🍯',
-    wheat_bran: '📦',
-    canola_meal: '🌻',
-    sesame_cake: '🌱',
-    limestone: '🪨',
-  };
-
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -95,7 +74,7 @@ function IngredientCard({
         whileTap={{ scale: 0.98 }}
         className="w-full flex flex-col items-center gap-2"
       >
-        <span className="text-3xl">{iconMap[id] || '🌾'}</span>
+        <span className="text-3xl">{getIngredientIcon(id)}</span>
         <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-900' : 'text-gray-900'}`}>
           {name}
         </span>
@@ -172,7 +151,7 @@ function IngredientGroup({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {ingredients.map((ingredientKey) => {
-          const data = NUTRITION_DATA[ingredientKey as keyof typeof NUTRITION_DATA];
+          const data = getIngredient(ingredientKey);
           if (!data) return null;
 
           return (

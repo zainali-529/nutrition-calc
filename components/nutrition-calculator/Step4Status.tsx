@@ -126,6 +126,13 @@ export function Step4Status({
             range: ranges?.fiber,
           },
           {
+            label: 'fat',
+            icon: '🥑',
+            value: `${nutrients.fat.toFixed(1)}%`,
+            sublabel: 'Fat (DM)',
+            range: ranges?.fat,
+          },
+          {
             label: 'calcium',
             icon: '🦴',
             value: `${nutrients.calcium.toFixed(2)}%`,
@@ -175,7 +182,7 @@ export function Step4Status({
         </h3>
         <div className="space-y-3">
           {recommendations.map((rec, idx) => {
-            const statusIcons = {
+            const statusIcons: Record<'success' | 'warning' | 'error', string> = {
               success: '✅',
               warning: '⚠️',
               error: '🛑',
@@ -184,10 +191,10 @@ export function Step4Status({
             return (
               <StatusCard
                 key={idx}
-                status={rec.status as any}
+                status={rec.status}
                 title={rec.nutrient}
                 description={rec.recommendation}
-                icon={statusIcons[rec.status as any] || '❓'}
+                icon={statusIcons[rec.status] || '❓'}
                 index={idx}
               />
             );
@@ -204,8 +211,8 @@ export function Step4Status({
       >
         <p className="text-sm text-blue-900">
           {language === 'en'
-            ? 'These recommendations are based on typical dairy cattle nutrition requirements. Consult with a veterinarian for farm-specific adjustments.'
-            : 'یہ سفارشات بیل کی عام غذائی ضروریات پر مبنی ہیں۔ فارم کی مخصوص ترمیمات کے لیے ڈاکٹر سے مشورہ لیں۔'}
+            ? 'Targets are for the CONCENTRATE mix only. The animal also receives fresh forage, hay, or silage on top of this. Consult a veterinarian for farm-specific adjustments.'
+            : 'یہ ہدف صرف کانسنٹریٹ کے لیے ہیں۔ جانور کو سبز چارہ، گھاس یا سائیلج بھی ساتھ ملے گا۔ فارم کی مخصوص ترمیم کے لیے ڈاکٹر سے رجوع کریں۔'}
         </p>
       </motion.div>
 

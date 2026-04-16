@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { NUTRITION_DATA } from '@/lib/constants';
+import { getIngredient } from '@/lib/constants';
 
 interface IngredientTooltipProps {
   ingredientKey: string;
@@ -16,7 +16,7 @@ export function IngredientTooltip({
   language,
 }: IngredientTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const data = NUTRITION_DATA[ingredientKey as keyof typeof NUTRITION_DATA];
+  const data = getIngredient(ingredientKey);
 
   if (!data) return <>{children}</>;
 

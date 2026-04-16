@@ -1,8 +1,11 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle } from 'lucide-react';
-import { NUTRITION_DATA } from '@/lib/constants';
+import { X, AlertCircle, Pencil, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { getIngredient } from '@/lib/constants';
+import { hasOverride } from '@/lib/ingredientOverrides';
+import { IngredientNutritionEditor } from './IngredientNutritionEditor';
 
 interface IngredientDetailModalProps {
   isOpen: boolean;
@@ -39,7 +42,12 @@ export function IngredientDetailModal({
   language,
   onClose,
 }: IngredientDetailModalProps) {
-  const ingredient = ingredientKey ? NUTRITION_DATA[ingredientKey as keyof typeof NUTRITION_DATA] : null;
+  const [isEditing, setIsEditing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Re-read ingredient on every render (picks up latest overrides after save)
+  const ingredient = ingredientKey ? getIngredient(ingredientKey) ?? null : null;
+  const modified = ingredientKey ? hasOverride(ingredientKey) : false;
 
   if (!ingredient) return null;
 
@@ -104,6 +112,24 @@ export function IngredientDetailModal({
 
               {/* Content */}
               <div className="px-6 py-6 space-y-6">
+                {/* Modified badge */}
+                {modified && !isEditing && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 font-medium flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                    {language === 'en' ? 'You have custom nutrition values for this ingredient' : 'آپ نے اس جزو کی غذائیت میں تبدیلی کی ہے'}
+                  </div>
+                )}
+
+                {isEditing && ingredientKey ? (
+                  <IngredientNutritionEditor
+                    key={refreshKey}
+                    ingredientKey={ingredientKey}
+                    language={language}
+                    onSave={() => { setIsEditing(false); setRefreshKey((k) => k + 1); }}
+                    onCancel={() => setIsEditing(false)}
+                  />
+                ) : (
+                <>
                 {/* Nutritional Facts */}
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -321,19 +347,32 @@ export function IngredientDetailModal({
                     </div>
                   </motion.div>
                 )}
+              </>
+              )}
               </div>
 
               {/* Footer */}
-              <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-200/50">
+              {!isEditing && (
+              <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-200/50 flex gap-2">
                 <motion.button
-                  onClick={onClose}
+                  onClick={() => setIsEditing(true)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-shadow"
+                  className="flex-1 py-2.5 px-4 bg-amber-50 text-amber-800 font-semibold rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors inline-flex items-center justify-center gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  {language === 'en' ? 'Edit Nutrition' : 'غذائیت ترمیم'}
+                </motion.button>
+                <motion.button
+                  onClick={() => { setIsEditing(false); onClose(); }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-shadow"
                 >
                   {language === 'en' ? 'Close' : 'بند کریں'}
                 </motion.button>
               </div>
+              )}
             </div>
           </motion.div>
         </>
