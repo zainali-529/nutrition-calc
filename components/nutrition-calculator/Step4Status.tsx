@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FormulaItem, calculateNutrients, generateRecommendations } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { NUTRITION_RANGES } from '@/lib/constants';
+import { DailyFeedingGuide } from './DailyFeedingGuide';
 
 interface Step4StatusProps {
   language: 'en' | 'ur';
@@ -173,6 +174,14 @@ export function Step4Status({
           );
         })}
       </div>
+
+      {/* Daily Feeding Guide — how much to feed per day */}
+      <DailyFeedingGuide
+        language={language}
+        animalId={selectedAnimal}
+        stageIndex={selectedStage}
+        formula={formula}
+      />
 
       {/* Recommendations */}
       <div>

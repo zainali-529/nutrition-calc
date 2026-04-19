@@ -317,12 +317,32 @@ export function IngredientDetailModal({
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.45 }}
-                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-200/50 col-span-2"
+                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-200/50"
                       >
                         <div className="text-xs font-semibold text-emerald-600">Price</div>
                         <div className="text-xl font-bold text-emerald-900">₨ {ingredient.price}</div>
                         <div className="text-xs text-emerald-600/70">
                           {language === 'en' ? 'Per kg' : 'فی کلو'}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Max Inclusion (practical cap used by Auto-Formulate) */}
+                    {ingredient.maxInclusion !== undefined && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-lg p-3 border border-violet-200/50"
+                      >
+                        <div className="text-xs font-semibold text-violet-600">
+                          {language === 'en' ? 'Max Inclusion' : 'زیادہ سے زیادہ شمولیت'}
+                        </div>
+                        <div className="text-xl font-bold text-violet-900">
+                          {ingredient.maxInclusion}%
+                        </div>
+                        <div className="text-xs text-violet-600/70">
+                          {language === 'en' ? 'of concentrate mix' : 'کانسنٹریٹ کا'}
                         </div>
                       </motion.div>
                     )}

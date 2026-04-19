@@ -28,6 +28,9 @@ export interface FormulaItem {
   kg: number;             // as-fed quantity
   price?: number;         // Rs per kg as-fed (override of registry price)
   quality?: 'excellent' | 'average' | 'poor';
+  /** When true, Auto-Formulate treats this ingredient's kg as a fixed
+   *  equality constraint and only optimises the rest. */
+  locked?: boolean;
 }
 
 /**
