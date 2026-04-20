@@ -62,6 +62,9 @@ export interface AutoFormulateInput {
   lockedQuantities?: Record<string, number>;
   /** Which objective to optimise. Default is 'min_cost'. */
   mode?: OptimisationMode;
+  /** @internal — skip the diagnostic relax-and-solve recursion when this is
+   *  a secondary probe from within diagnoseBottleneck(). Prevents infinite loops. */
+  _skipDiagnosis?: boolean;
 }
 
 /**
@@ -239,7 +242,8 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     return {
       success: false,
       reason: 'infeasible',
-      bottleneck: diagnoseBottleneck(input, ingredients),
+      // Skip diagnosis if we're already inside a diagnostic probe call
+      bottleneck: input._skipDiagnosis ? undefined : diagnoseBottleneck(input, ingredients),
     };
   }
 
@@ -359,10 +363,14 @@ function buildDiagnostics(
 
 function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): string {
   const batchSize = input.batchSize ?? 100;
-  const culprits: string[] = [];
 
+  // -------------------------------------------------------------------------
+  // Pass 1 — individual-nutrient greedy check
+  //   If ANY nutrient is impossible on its own (best/worst case greedy fill
+  //   can't reach the target range), that's the clear blocker.
+  // -------------------------------------------------------------------------
+  const individualBlockers: string[] = [];
   for (const c of CONSTRAINED) {
-    // Sort descending by nutrient value weighted by DM
     const sortedDesc = [...ings].sort(
       (a, b) => b[c.field] * (b.dm / 100) - a[c.field] * (a.dm / 100)
     );
@@ -372,11 +380,92 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
     const minVal = greedyConcentration(sortedAsc,  c.field, batchSize);
     const { min: targetMin, max: targetMax } = input.ranges[c.rangeKey];
 
-    if (maxVal < targetMin) culprits.push(`${c.key} too low (max achievable ≈ ${maxVal.toFixed(2)}, need ≥ ${targetMin})`);
-    if (minVal > targetMax) culprits.push(`${c.key} too high (min achievable ≈ ${minVal.toFixed(2)}, need ≤ ${targetMax})`);
+    if (maxVal < targetMin) individualBlockers.push(`${c.key} too low (max achievable ≈ ${maxVal.toFixed(2)}, need ≥ ${targetMin})`);
+    if (minVal > targetMax) individualBlockers.push(`${c.key} too high (min achievable ≈ ${minVal.toFixed(2)}, need ≤ ${targetMax})`);
+  }
+  if (individualBlockers.length > 0) {
+    return individualBlockers.join('; ');
   }
 
-  return culprits.join('; ') || 'constraints cannot all be satisfied simultaneously';
+  // -------------------------------------------------------------------------
+  // Pass 2 — pairwise relax-and-solve
+  //   Each nutrient individually CAN be met, but combined constraints are
+  //   infeasible. Relax ONE nutrient constraint at a time and see which
+  //   relaxation unlocks feasibility → that's the binding pair.
+  // -------------------------------------------------------------------------
+  const relaxBlockers: string[] = [];
+  for (const c of CONSTRAINED) {
+    const { min: tMin, max: tMax } = input.ranges[c.rangeKey];
+    // Widen the range to ±50% of its width to test if it's the bottleneck
+    const width = tMax - tMin;
+    const relaxed: NutrientRange = {
+      ...input.ranges,
+      [c.rangeKey]: { min: Math.max(0, tMin - width * 0.5), max: tMax + width * 0.5 },
+    };
+    const testResult = autoFormulate({
+      ...input,
+      ranges: relaxed,
+      _skipDiagnosis: true,   // prevent recursion
+    });
+    if (testResult.success) {
+      relaxBlockers.push(c.key);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Pass 3 — ingredient-gap suggestions
+  //   Based on which nutrients seem binding, suggest concrete ingredients.
+  // -------------------------------------------------------------------------
+  const suggestions = suggestMissingIngredients(ings, relaxBlockers);
+
+  const parts: string[] = [];
+  if (relaxBlockers.length > 0) {
+    parts.push(`conflicting: ${relaxBlockers.join(' + ')}`);
+  }
+  if (suggestions.length > 0) {
+    parts.push(`try adding: ${suggestions.join(' or ')}`);
+  }
+  return parts.length > 0
+    ? parts.join(' · ')
+    : 'constraints cannot all be satisfied simultaneously';
+}
+
+/**
+ * Suggest concrete ingredient additions based on which nutrient constraints
+ * are binding. Matches against a curated list of "high-impact" Pakistani
+ * ingredients the user likely hasn't selected yet.
+ */
+function suggestMissingIngredients(
+  selected: Ingredient[],
+  binding: string[],
+): string[] {
+  const selectedKeys = new Set(selected.map((i) => i.key));
+  const tips: string[] = [];
+
+  const hasKey = (k: string) => selectedKeys.has(k);
+  const needsMoreProtein = binding.includes('protein') || binding.includes('tdn');
+  const needsLessFibre   = binding.includes('fiber');
+  const needsMoreEnergy  = binding.includes('energy');
+
+  // High-protein + low-fibre picks (SBM, CGM 60, canola)
+  if (needsMoreProtein || needsLessFibre) {
+    if (!hasKey('sbm')) tips.push('Soybean Meal (SBM) — 46% CP, low fibre');
+    else if (!hasKey('corn_gluten_meal')) tips.push('Corn Gluten Meal 60% — premium protein, very low fibre');
+    else if (!hasKey('canola_meal')) tips.push('Canola Meal — 36% CP');
+  }
+
+  // High-energy picks
+  if (needsMoreEnergy) {
+    if (!hasKey('wheat_grain')) tips.push('Wheat Grain — 3.28 Mcal/kg DM');
+    if (!hasKey('bypassFat')) tips.push('Bypass Fat — 4.78 Mcal/kg DM');
+  }
+
+  // Fibre too high → alternative low-fibre options
+  if (needsLessFibre) {
+    if (!hasKey('broken_rice')) tips.push('Broken Rice (Tukri) — very low fibre, high starch');
+  }
+
+  return tips.slice(0, 3); // cap to top 3 to keep message short
 }
 
 /**

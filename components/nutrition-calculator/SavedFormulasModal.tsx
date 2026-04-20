@@ -87,7 +87,7 @@ export function SavedFormulasModal({ isOpen, language, onClose, onLoad }: SavedF
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
           />
 
           {/* Modal */}
@@ -96,7 +96,7 @@ export function SavedFormulasModal({ isOpen, language, onClose, onLoad }: SavedF
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-2xl z-50 max-h-[85vh] flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] sm:w-[80vw] lg:w-[70vw] max-w-3xl z-[71] max-h-[85vh] flex flex-col"
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full">
               {/* Header */}

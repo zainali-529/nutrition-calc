@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle, Pencil, Eye } from 'lucide-react';
+import { X, AlertCircle, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { getIngredient } from '@/lib/constants';
 import { hasOverride } from '@/lib/ingredientOverrides';
@@ -64,7 +64,7 @@ export function IngredientDetailModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
           />
 
           {/* Modal */}
@@ -73,7 +73,7 @@ export function IngredientDetailModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 max-h-[90vh] overflow-y-auto"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] sm:w-[85vw] lg:w-[75vw] max-w-4xl z-[71] max-h-[90vh] overflow-y-auto"
           >
             <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-2xl border border-white/40 overflow-hidden">
               {/* Header */}
@@ -136,7 +136,7 @@ export function IngredientDetailModal({
                     <span className="text-lg">📊</span>
                     {language === 'en' ? 'Nutritional Values' : 'غذائی اقدار'}
                   </h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {/* CP */}
                     {ingredient.cp !== undefined && (
                       <motion.div
@@ -317,7 +317,7 @@ export function IngredientDetailModal({
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.45 }}
-                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-200/50"
+                        className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-200/50 col-span-full sm:col-span-2"
                       >
                         <div className="text-xs font-semibold text-emerald-600">Price</div>
                         <div className="text-xl font-bold text-emerald-900">₨ {ingredient.price}</div>
@@ -327,23 +327,48 @@ export function IngredientDetailModal({
                       </motion.div>
                     )}
 
-                    {/* Max Inclusion (practical cap used by Auto-Formulate) */}
+                    {/* Max Inclusion — full-width card with scientific reason */}
                     {ingredient.maxInclusion !== undefined && (
                       <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-lg p-3 border border-violet-200/50"
+                        className="col-span-full bg-gradient-to-br from-violet-50 via-fuchsia-50 to-violet-50 rounded-xl border-2 border-violet-200/60 p-4 shadow-sm"
                       >
-                        <div className="text-xs font-semibold text-violet-600">
-                          {language === 'en' ? 'Max Inclusion' : 'زیادہ سے زیادہ شمولیت'}
+                        {/* Header row */}
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm text-xl">
+                            🚫
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] font-bold text-violet-700 uppercase tracking-wider">
+                              {language === 'en' ? 'Max Inclusion Limit' : 'زیادہ سے زیادہ حد'}
+                            </div>
+                            <div className="text-2xl font-bold text-violet-900 leading-tight">
+                              {ingredient.maxInclusion}%
+                              <span className="text-xs font-medium text-violet-600/80 ml-1.5">
+                                {language === 'en' ? 'of concentrate' : 'کانسنٹریٹ کا'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xl font-bold text-violet-900">
-                          {ingredient.maxInclusion}%
-                        </div>
-                        <div className="text-xs text-violet-600/70">
-                          {language === 'en' ? 'of concentrate mix' : 'کانسنٹریٹ کا'}
-                        </div>
+
+                        {/* Scientific reason */}
+                        {(ingredient.capReasonEn || ingredient.capReasonUr) && (
+                          <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-violet-200/50">
+                            <div className="flex items-start gap-2">
+                              <span className="text-sm flex-shrink-0" aria-hidden>⚕️</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[9px] font-bold text-violet-700 uppercase tracking-wider mb-1">
+                                  {language === 'en' ? 'Why this limit?' : 'یہ حد کیوں؟'}
+                                </div>
+                                <p className={`text-xs text-slate-800 leading-relaxed ${language === 'ur' ? 'text-right' : ''}`}>
+                                  {language === 'en' ? ingredient.capReasonEn : ingredient.capReasonUr}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </motion.div>
                     )}
 

@@ -166,6 +166,54 @@ runScenario(
   { locks: { corn: 60, sbm: 60 } }
 );
 
+// ── User bug repro — 10 ingredients selected, Dairy Cow Early Lactation ────
+// corn, molasses, rsm (sarso), sesame_cake (til), wheat_bran (chokhar),
+// bypassFat, limestone, dcp, salt, sodium_bicarb
+const USER_INGREDIENTS = ['corn', 'molasses', 'rsm', 'sesame_cake', 'wheat_bran', 'bypassFat', 'limestone', 'dcp', 'salt'];
+// Note: test script doesn't have sodium_bicarb — doesn't affect feasibility (zero nutrients).
+
+const dairyEarlyLact = {
+  protein:    { min: 20, max: 22 },
+  energy:     { min: 2.80, max: 3.10 },
+  tdn:        { min: 75, max: 80 },
+  fiber:      { min: 15, max: 25 },
+  fat:        { min: 3.0, max: 6.0 },
+  calcium:    { min: 0.90, max: 1.20 },
+  phosphorus: { min: 0.50, max: 0.65 },
+};
+// Add bypassFat to INGS for this test
+INGS.bypassFat = { dm: 99, cp: 0, me: 4.78, tdn: 180, adf: 0, ndf: 0, fat: 99, starch: 0, ca: 0, p: 0, ash: 0, price: 400, maxInclusion: 5 };
+INGS.sesame_cake = { dm: 90, cp: 40, me: 2.99, tdn: 68, adf: 22, ndf: 30, fat: 10, starch: 3, ca: 1.20, p: 0.65, ash: 11, price: 120, maxInclusion: 20 };
+INGS.rsm = { dm: 90, cp: 35, me: 2.65, tdn: 66, adf: 18, ndf: 28, fat: 7, starch: 8, ca: 0.62, p: 1.10, ash: 7.5, price: 110, maxInclusion: 15 };
+
+runScenario(
+  'Scenario USER — 9 ingredients, Dairy Cow Early Lactation',
+  USER_INGREDIENTS,
+  dairyEarlyLact,
+);
+
+// Tight stages with narrower ranges — likely bottleneck for user's ingredient set
+const heiferCalf = {
+  protein: { min: 20, max: 24 }, energy: { min: 2.90, max: 3.20 }, tdn: { min: 78, max: 83 },
+  fiber: { min: 12, max: 20 }, fat: { min: 3.0, max: 5.0 },
+  calcium: { min: 0.90, max: 1.20 }, phosphorus: { min: 0.50, max: 0.70 },
+};
+runScenario('Scenario USER+Heifer Calf — tight NDF≤20%', USER_INGREDIENTS, heiferCalf);
+
+const fatteningFinisher = {
+  protein: { min: 12, max: 14 }, energy: { min: 3.00, max: 3.30 }, tdn: { min: 80, max: 85 },
+  fiber: { min: 12, max: 20 }, fat: { min: 3.0, max: 5.0 },
+  calcium: { min: 0.45, max: 0.65 }, phosphorus: { min: 0.30, max: 0.40 },
+};
+runScenario('Scenario USER+Fattening Bull Finisher — ME≥3.00', USER_INGREDIENTS, fatteningFinisher);
+
+const dairyCowMid = {
+  protein: { min: 18, max: 20 }, energy: { min: 2.70, max: 2.90 }, tdn: { min: 72, max: 76 },
+  fiber: { min: 18, max: 28 }, fat: { min: 3.0, max: 5.0 },
+  calcium: { min: 0.80, max: 1.00 }, phosphorus: { min: 0.45, max: 0.60 },
+};
+runScenario('Scenario USER+Dairy Cow Mid Lactation — middle-of-road', USER_INGREDIENTS, dairyCowMid);
+
 // ── Phase 3 — three optimisation modes on the same baseline ─────────────────
 console.log('\n────── PHASE 3: Multi-objective modes (same baseline) ──────');
 runScenario('Scenario 5a — Mode: min_cost',    ALL, dairyMidLact, { mode: 'min_cost'    });
