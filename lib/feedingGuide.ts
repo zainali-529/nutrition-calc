@@ -1,174 +1,303 @@
 // ================================================================================
-// DAILY FEEDING GUIDE
+// DAILY CONCENTRATE-FEEDING GUIDE
 // ================================================================================
 // Given the animal's species/stage + body weight (+ milk yield for dairy),
-// estimate daily feed intake and how it should be split between concentrate
-// (this app's formula) and forage (hay/silage/green fodder fed separately).
+// estimate HOW MUCH OF THIS CONCENTRATE TO FEED per day.
 //
-// Rules are drawn from:
-//   • NRC Dairy 2001/2021 (intake models for dairy cattle)
-//   • NRC Beef 2016 (fattening intake models)
-//   • NRC Small Ruminants 2007 + INRA (goat intake)
-//   • Punjab Dairy Development Board extension guidelines (Pakistan)
-//   • NDRI Karnal (buffalo adjustments)
+// This calculator only designs the CONCENTRATE portion of the ration.  We do
+// NOT compute forage / hay quantities — that belongs to a TMR (Total Mixed
+// Ration) tool, which is a v2 feature.  Forage is assumed to be available
+// ad-libitum or per the farmer's existing practice.
 //
-// All figures are approximations — real intake varies with body condition,
-// temperature, forage quality, and individual animal. Use as a starting point
-// and adjust based on milk yield / body condition changes.
+// The driver varies by animal type:
+//
+//   ┌────────────────────────┬──────────────────────────────────────────────┐
+//   │ Animal / Stage         │ Concentrate driver                           │
+//   ├────────────────────────┼──────────────────────────────────────────────┤
+//   │ Dairy cow / buffalo    │ Maintenance (% BW) + milk-yield ratio (kg/L) │
+//   │ Dairy goat (lactation) │ Maintenance (% BW) + milk-yield ratio (kg/L) │
+//   │ Dry / late pregnancy   │ Body weight only (% BW)                      │
+//   │ Heifer (growth)        │ Body weight only (% BW)                      │
+//   │ Fattening bull / goat  │ Body weight only (% BW)                      │
+//   └────────────────────────┴──────────────────────────────────────────────┘
+//
+// References
+//   • NRC Dairy 2001 / 2021 — lactation concentrate allowance
+//   • NRC Beef 2016         — fattening bulls (% BW concentrate)
+//   • NRC Small Ruminants 2007 + INRA — goats
+//   • Punjab Dairy Development Board, NDRI Karnal — Pakistani extension rules
+//   • ICAR India — buffalo concentrate allowance (richer milk)
 // ================================================================================
+
+export type FeedingMode = 'lactation' | 'fattening' | 'maintenance' | 'growth';
 
 export interface FeedingInputs {
   animalId: string | null;
   stageIndex: number;
   bodyWeightKg: number;
-  milkYieldL?: number; // only meaningful for lactating stages
+  /** Only meaningful for stages with mode === 'lactation' */
+  milkYieldL?: number;
 }
 
-export interface FeedingGuide {
-  totalDmiKg: number;        // total dry-matter intake per day (kg DM)
-  concentrateAsFedKg: number;// concentrate (this formula) per day, as-fed
-  forageAsFedKg: number;     // green fodder (≈25% DM) per day, as-fed
-  hayAsFedKg: number;        // alternative: dry hay (≈88% DM) per day
-  concentratePct: number;    // % of DMI that is concentrate
-  foragePct: number;         // % of DMI that is forage
-  notes: string[];           // practical guidance
-}
-
-// ---------------------------------------------------------------------------
-// Rule tables (concentrate : forage ratios on DM basis, and DMI % body weight)
-// ---------------------------------------------------------------------------
-//
-// Format: [stageIndex] → { dmiPct, concPct, foragePct }
-//
-// dmiPct: Dry-matter intake as % of body weight
-// concPct / foragePct: split of DMI between concentrate and forage (on DM basis)
-// ---------------------------------------------------------------------------
-
+/**
+ * Per-stage rule: how to compute the daily concentrate quantity.
+ * The `mode` decides which fields below are used.
+ *
+ *   mode === 'lactation'
+ *     → kg/day = (BW × bwMaintenancePct/100) + (milkYieldL × milkRatio)
+ *
+ *   mode === 'fattening' | 'growth' | 'maintenance'
+ *     → kg/day = BW × bwTotalPct/100
+ */
 interface StageRule {
-  dmiPct: number;
-  concPct: number;
-  foragePct: number;
+  mode: FeedingMode;
+  /** Used when mode === 'lactation'. % of body weight for the maintenance allowance. */
+  bwMaintenancePct?: number;
+  /** Used when mode === 'lactation'. kg concentrate per litre of milk. */
+  milkRatio?: number;
+  /** Used when mode !== 'lactation'. % of body weight for the total allowance. */
+  bwTotalPct?: number;
+  /** Plain-language explanation shown to the user. */
+  rationaleEn: string;
+  rationaleUr: string;
 }
+
+// ---------------------------------------------------------------------------
+// Rules per animal × stage. Stage indices MUST line up with STAGES in
+// lib/constants.ts.
+//
+// Numeric calibration:
+//   • dairy cow milkRatio: 0.40 early → 0.35 mid → 0.30 late
+//     A 500 kg cow giving 15 L mid-lactation gets:
+//       (500 × 0.4%) + (15 × 0.35) = 2.0 + 5.25 = 7.25 kg concentrate/day  ✓
+//     This matches Punjab Dairy Board guidance ("1 kg concentrate per ~3 L milk
+//     plus 2 kg maintenance for a 500 kg cow").
+//
+//   • buffalo milkRatio is higher (richer milk fat ⇒ more energy per L):
+//       0.50 early, 0.45 mid, 0.40 late.
+//
+//   • Fattening bulls follow NRC Beef 2016: starter 1.5% BW concentrate,
+//     grower 2.0%, finisher 2.5%. Forage (≈1% BW DM) is fed separately.
+// ---------------------------------------------------------------------------
 
 const RULES: Record<string, StageRule[]> = {
-  // 🐄 Dairy Cow — 4 stages: Early, Mid, Late, Dry
+  // 🐄 Dairy Cow — Early / Mid / Late / Dry
   dairy_cow: [
-    { dmiPct: 3.8, concPct: 50, foragePct: 50 },   // Early Lactation — dense, 50:50
-    { dmiPct: 3.5, concPct: 40, foragePct: 60 },   // Mid Lactation
-    { dmiPct: 3.0, concPct: 30, foragePct: 70 },   // Late Lactation
-    { dmiPct: 2.0, concPct: 15, foragePct: 85 },   // Dry Period — mostly forage
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.40,
+      rationaleEn: '0.4% BW for maintenance + 0.40 kg per litre of milk (early lactation — high demand)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.40 کلو (شروع کا دودھ — زیادہ ضرورت)' },
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.35,
+      rationaleEn: '0.4% BW for maintenance + 0.35 kg per litre of milk (mid lactation)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.35 کلو (درمیانی دودھ)' },
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.30,
+      rationaleEn: '0.4% BW for maintenance + 0.30 kg per litre of milk (late lactation — recovering body condition)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.30 کلو (آخری دودھ)' },
+    { mode: 'maintenance', bwTotalPct: 0.5,
+      rationaleEn: '0.5% BW for steaming-up; bump to 1% in the last 3 weeks before calving',
+      rationaleUr: 'بچہ پیدا ہونے سے پہلے بحالی — 0.5% جسمانی وزن (آخری 3 ہفتوں میں 1% تک بڑھائیں)' },
   ],
 
-  // 🐃 Dairy Buffalo — similar to cow, slightly higher energy needs
+  // 🐃 Dairy Buffalo — slightly higher concentrate than cow because buffalo milk
+  // averages 6-8% fat (vs cow's 3.5-4%) which costs more energy to synthesise.
   dairy_buffalo: [
-    { dmiPct: 3.8, concPct: 50, foragePct: 50 },
-    { dmiPct: 3.5, concPct: 40, foragePct: 60 },
-    { dmiPct: 3.0, concPct: 30, foragePct: 70 },
-    { dmiPct: 2.0, concPct: 15, foragePct: 85 },
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.50,
+      rationaleEn: '0.4% BW for maintenance + 0.50 kg per litre of milk (buffalo milk is richer — needs more concentrate)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.50 کلو (بھینس کا دودھ گاڑھا)' },
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.45,
+      rationaleEn: '0.4% BW for maintenance + 0.45 kg per litre of milk (mid lactation)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.45 کلو' },
+    { mode: 'lactation', bwMaintenancePct: 0.4, milkRatio: 0.40,
+      rationaleEn: '0.4% BW for maintenance + 0.40 kg per litre of milk (late lactation)',
+      rationaleUr: 'بحالی کے لیے 0.4% جسمانی وزن + ہر لیٹر دودھ پر 0.40 کلو' },
+    { mode: 'maintenance', bwTotalPct: 0.5,
+      rationaleEn: '0.5% BW for the dry period; bump in the final 3 weeks for steaming-up',
+      rationaleUr: 'خشک دور میں 0.5% جسمانی وزن (آخری 3 ہفتوں میں بڑھائیں)' },
   ],
 
-  // 🐄 Heifer — 3 stages: Calf, Growing, Pregnant
+  // 🐄 Heifer — Calf / Growing / Pregnant. Growth-driven, not lactation.
   heifer: [
-    { dmiPct: 3.5, concPct: 55, foragePct: 45 },   // Calf 3-6mo — still growing fast
-    { dmiPct: 2.8, concPct: 35, foragePct: 65 },   // Growing 6-15mo
-    { dmiPct: 2.2, concPct: 25, foragePct: 75 },   // Pregnant Heifer
+    { mode: 'growth', bwTotalPct: 1.5,
+      rationaleEn: 'Calf 3–6 months: 1.5% BW as starter concentrate (rest from milk + green forage)',
+      rationaleUr: 'بچہ (3-6 ماہ): 1.5% جسمانی وزن (باقی دودھ اور سبز چارے سے)' },
+    { mode: 'growth', bwTotalPct: 1.0,
+      rationaleEn: 'Growing heifer (6–15 months): 1.0% BW concentrate; rely on forage for fibre',
+      rationaleUr: 'بڑھتی بچھڑی (6-15 ماہ): 1.0% جسمانی وزن کانسنٹریٹ' },
+    { mode: 'growth', bwTotalPct: 1.0,
+      rationaleEn: 'Pregnant heifer (15+ months): 1.0% BW; bump in the last trimester for foetal growth',
+      rationaleUr: 'گابھن بچھڑی: 1.0% جسمانی وزن (آخری مہینوں میں بڑھائیں)' },
   ],
 
-  // 🐂 Fattening Bull — 3 stages: Starter, Grower, Finisher
+  // 🐂 Fattening Bull — concentrate IS the main feed. % BW rises through the
+  // production cycle as energy density requirements increase (NRC Beef 2016).
   fattening_bull: [
-    { dmiPct: 3.0, concPct: 60, foragePct: 40 },   // Starter
-    { dmiPct: 2.7, concPct: 70, foragePct: 30 },   // Grower
-    { dmiPct: 2.5, concPct: 80, foragePct: 20 },   // Finisher — max energy
+    { mode: 'fattening', bwTotalPct: 1.5,
+      rationaleEn: 'Starter (100–200 kg): 1.5% BW concentrate; gradual transition from forage-heavy ration',
+      rationaleUr: 'ابتدائی (100-200 کلو): 1.5% جسمانی وزن (آہستہ آہستہ بڑھائیں)' },
+    { mode: 'fattening', bwTotalPct: 2.0,
+      rationaleEn: 'Grower (200–300 kg): 2.0% BW concentrate; fastest weight-gain phase',
+      rationaleUr: 'بڑھوتری (200-300 کلو): 2.0% جسمانی وزن (تیز ترین وزن بڑھنا)' },
+    { mode: 'fattening', bwTotalPct: 2.5,
+      rationaleEn: 'Finisher (>300 kg): 2.5% BW concentrate for maximum energy density and finish',
+      rationaleUr: 'تیاری (300+ کلو): 2.5% جسمانی وزن (زیادہ توانائی کے لیے)' },
   ],
 
-  // 🐐 Dairy Goat — 4 stages: Early, Mid/Late, Late Preg, Dry
+  // 🐐 Dairy Goat — Early / Mid-Late / Late Pregnancy / Dry
+  // Goats eat more per kg BW than cattle but produce less per goat — the
+  // milkRatio per litre is similar to cow.
   dairy_goat: [
-    { dmiPct: 4.5, concPct: 50, foragePct: 50 },   // Early Lactation
-    { dmiPct: 4.0, concPct: 40, foragePct: 60 },   // Mid/Late Lactation
-    { dmiPct: 3.5, concPct: 30, foragePct: 70 },   // Late Pregnancy
-    { dmiPct: 2.5, concPct: 15, foragePct: 85 },   // Dry
+    { mode: 'lactation', bwMaintenancePct: 1.0, milkRatio: 0.40,
+      rationaleEn: '1.0% BW maintenance + 0.40 kg per litre of milk (early lactation)',
+      rationaleUr: 'بحالی کے لیے 1.0% جسمانی وزن + ہر لیٹر دودھ پر 0.40 کلو' },
+    { mode: 'lactation', bwMaintenancePct: 1.0, milkRatio: 0.35,
+      rationaleEn: '1.0% BW maintenance + 0.35 kg per litre of milk (mid/late lactation)',
+      rationaleUr: 'بحالی کے لیے 1.0% جسمانی وزن + ہر لیٹر دودھ پر 0.35 کلو' },
+    { mode: 'maintenance', bwTotalPct: 1.5,
+      rationaleEn: 'Late pregnancy: 1.5% BW to support foetal growth and prevent pregnancy toxaemia',
+      rationaleUr: 'آخری حمل: 1.5% جسمانی وزن (بچہ کی نشوونما اور حمل کی زہریلگی روکنے کے لیے)' },
+    { mode: 'maintenance', bwTotalPct: 0.7,
+      rationaleEn: 'Dry period: 0.7% BW concentrate; rely mostly on good forage',
+      rationaleUr: 'خشک دور: 0.7% جسمانی وزن (زیادہ تر اچھے چارے پر)' },
   ],
 
-  // 🐐 Fattening Goat — 2 stages: Grower, Finisher
+  // 🐐 Fattening Goat — Grower / Finisher
   fattening_goat: [
-    { dmiPct: 4.0, concPct: 55, foragePct: 45 },   // Grower
-    { dmiPct: 3.5, concPct: 70, foragePct: 30 },   // Finisher
+    { mode: 'fattening', bwTotalPct: 2.5,
+      rationaleEn: 'Grower (15–25 kg): 2.5% BW concentrate; rapid frame development',
+      rationaleUr: 'بڑھوتری (15-25 کلو): 2.5% جسمانی وزن (تیز نشوونما)' },
+    { mode: 'fattening', bwTotalPct: 3.0,
+      rationaleEn: 'Finisher (25–40 kg): 3.0% BW concentrate for maximum weight gain to market',
+      rationaleUr: 'تیاری (25-40 کلو): 3.0% جسمانی وزن (زیادہ سے زیادہ وزن کے لیے)' },
   ],
 };
 
-// Typical dry-matter content of common Pakistani forages (used to convert
-// DM intake → as-fed weight for buying / feeding guidance).
-const FORAGE_DM_PCT = 25;  // green fodder (berseem, maize fodder) ≈ 20–30% DM
-const HAY_DM_PCT    = 88;  // dry hay / straw ≈ 85–90% DM
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 /**
- * Calculate daily feeding recommendations. Returns null if inputs are insufficient.
+ * One contribution to the daily concentrate total — kept structured so the UI
+ * can render the breakdown ("4 kg for maintenance + 5 kg for milk = 9 kg").
  */
-export function calculateFeedingGuide(
+export interface ConcentrateBreakdownLine {
+  /** What this line represents — translated by the UI. */
+  kind: 'maintenance' | 'milk' | 'fattening' | 'growth' | 'pregnancy_dry';
+  /** Underlying calculation as plain text, e.g. "500 kg × 0.4%". */
+  formula: string;
+  /** Result in kg/day for this line. */
+  kg: number;
+}
+
+export interface ConcentrateGuide {
+  mode: FeedingMode;
+  /** Total daily concentrate to feed (kg as-fed). */
+  concentrateKgPerDay: number;
+  /** Pieces that summed to the total. Always at least 1 entry. */
+  breakdown: ConcentrateBreakdownLine[];
+  /** Daily cost at the formula's per-kg as-fed price. May be 0 if no price. */
+  dailyCostRs: number;
+  /** Per-kg cost used for `dailyCostRs`. */
+  perKgPriceRs: number;
+  /** Plain-language summary of the rule applied (en + ur). */
+  rationaleEn: string;
+  rationaleUr: string;
+  /** Practical farmer guidance — split feedings, water etc. */
+  notesEn: string[];
+  notesUr: string[];
+}
+
+/**
+ * Compute the daily concentrate-feeding plan. Returns null if the inputs are
+ * insufficient (no animal selected, BW ≤ 0, etc.).
+ *
+ * @param inputs           animal/stage/BW/milk
+ * @param formulaPricePerKg  this formula's as-fed price (Rs/kg) — used for
+ *                            the daily cost preview. Pass 0 if unknown.
+ */
+export function calculateConcentrateGuide(
   inputs: FeedingInputs,
-  concentrateDmPct: number
-): FeedingGuide | null {
+  formulaPricePerKg: number,
+): ConcentrateGuide | null {
   const { animalId, stageIndex, bodyWeightKg, milkYieldL } = inputs;
   if (!animalId || bodyWeightKg <= 0) return null;
-
-  const stages = RULES[animalId];
-  if (!stages) return null;
-  const rule = stages[stageIndex];
+  const rule = RULES[animalId]?.[stageIndex];
   if (!rule) return null;
 
-  const notes: string[] = [];
+  const breakdown: ConcentrateBreakdownLine[] = [];
+  let total = 0;
 
-  // 1. Total dry-matter intake (base = % of body weight)
-  let totalDmi = bodyWeightKg * (rule.dmiPct / 100);
+  if (rule.mode === 'lactation') {
+    // Maintenance allowance from body weight
+    const maint = bodyWeightKg * (rule.bwMaintenancePct! / 100);
+    breakdown.push({
+      kind: 'maintenance',
+      formula: `${bodyWeightKg} kg × ${rule.bwMaintenancePct}%`,
+      kg: round(maint, 2),
+    });
+    total += maint;
 
-  // 2. For lactating animals, bump intake with milk yield
-  //    (each litre of milk needs ~0.4 kg extra DMI for cow/buffalo, 0.2 for goat)
-  const isLactating = milkYieldL && milkYieldL > 0 && rule.concPct >= 30;
-  if (isLactating) {
-    const milkDmiBoost =
-      animalId === 'dairy_goat'        ? 0.2 :   // goats eat less per L
-      animalId === 'dairy_buffalo'     ? 0.45 :  // buffalo produce richer milk
-      /* dairy_cow default */             0.40;
-    totalDmi += (milkYieldL as number) * milkDmiBoost;
-    notes.push(
-      `Intake bumped by ${((milkYieldL as number) * milkDmiBoost).toFixed(1)} kg DM for ${milkYieldL} L milk/day`
-    );
+    // Milk-yield component (always present, even if 0 — the user can see how
+    // it scales)
+    const milk = (milkYieldL ?? 0) * (rule.milkRatio ?? 0);
+    breakdown.push({
+      kind: 'milk',
+      formula: `${milkYieldL ?? 0} L × ${rule.milkRatio} kg/L`,
+      kg: round(milk, 2),
+    });
+    total += milk;
+  } else {
+    const kg = bodyWeightKg * (rule.bwTotalPct! / 100);
+    const kindMap: Record<Exclude<FeedingMode, 'lactation'>, ConcentrateBreakdownLine['kind']> = {
+      fattening:   'fattening',
+      growth:      'growth',
+      maintenance: 'pregnancy_dry',
+    };
+    breakdown.push({
+      kind: kindMap[rule.mode],
+      formula: `${bodyWeightKg} kg × ${rule.bwTotalPct}%`,
+      kg: round(kg, 2),
+    });
+    total = kg;
   }
 
-  // 3. Split between concentrate and forage (on DM basis)
-  const concDmKg   = totalDmi * (rule.concPct   / 100);
-  const forageDmKg = totalDmi * (rule.foragePct / 100);
+  // Practical notes — picked based on the rule + animal
+  const notesEn: string[] = [];
+  const notesUr: string[] = [];
 
-  // 4. Convert DM → as-fed for both concentrate and forage
-  const concAsFed  = concentrateDmPct > 0 ? concDmKg   / (concentrateDmPct / 100) : concDmKg;
-  const greenAsFed = forageDmKg / (FORAGE_DM_PCT / 100);
-  const hayAsFed   = forageDmKg / (HAY_DM_PCT    / 100);
+  // Fattening / high-concentrate stages — split feedings to avoid acidosis
+  if (rule.mode === 'fattening' || (rule.mode === 'lactation' && total >= bodyWeightKg * 0.012)) {
+    notesEn.push('High-concentrate ration — split into 2–3 feedings/day to avoid rumen acidosis');
+    notesUr.push('زیادہ کانسنٹریٹ — تیزابیت سے بچنے کے لیے 2-3 وقت میں تقسیم کریں');
+  }
 
-  // Practical guidance
-  if (rule.concPct >= 50) {
-    notes.push('High-concentrate ration — split into 2-3 feedings/day to avoid acidosis');
+  // High-yielding lactation — water allowance
+  if (rule.mode === 'lactation' && (milkYieldL ?? 0) >= 20) {
+    notesEn.push('High producer — provide ≥5 L of clean water per litre of milk');
+    notesUr.push('زیادہ دودھ والی — ہر لیٹر دودھ پر کم از کم 5 لیٹر صاف پانی');
   }
-  if (isLactating && (milkYieldL as number) >= 20) {
-    notes.push('High producer — ensure fresh clean water (≥5 L per L milk) always available');
+
+  // Pregnant heifer / late-preg goat — bump near calving
+  if (rule.mode === 'growth' && stageIndex === 2) {
+    notesEn.push('Last trimester: gradually bump concentrate by 25–50 % to support foetal growth');
+    notesUr.push('آخری مہینوں میں کانسنٹریٹ میں 25-50% اضافہ بچے کی نشوونما کے لیے');
   }
-  if (animalId === 'fattening_bull' && stageIndex === 2) {
-    notes.push('Finisher phase — free access to roughage helps rumen health');
+
+  // Fattening finisher — open access to roughage
+  if (rule.mode === 'fattening' && rule.bwTotalPct! >= 2.5) {
+    notesEn.push('Provide some long-stem hay or straw alongside — keeps the rumen healthy');
+    notesUr.push('ساتھ ہی کچھ بھوسہ یا گھاس بھی رکھیں — رومن کی صحت کے لیے');
   }
 
   return {
-    totalDmiKg:         round(totalDmi, 2),
-    concentrateAsFedKg: round(concAsFed, 2),
-    forageAsFedKg:      round(greenAsFed, 1),
-    hayAsFedKg:         round(hayAsFed, 2),
-    concentratePct:     rule.concPct,
-    foragePct:          rule.foragePct,
-    notes,
+    mode: rule.mode,
+    concentrateKgPerDay: round(total, 2),
+    breakdown,
+    dailyCostRs: Math.round(total * formulaPricePerKg),
+    perKgPriceRs: round(formulaPricePerKg, 2),
+    rationaleEn: rule.rationaleEn,
+    rationaleUr: rule.rationaleUr,
+    notesEn,
+    notesUr,
   };
-}
-
-function round(val: number, decimals: number): number {
-  const f = 10 ** decimals;
-  return Math.round(val * f) / f;
 }
 
 /**
@@ -180,23 +309,34 @@ export function getSuggestedBodyWeight(animalId: string | null, stageIndex: numb
   if (!animalId) return 0;
 
   const table: Record<string, number[]> = {
-    dairy_cow:      [500, 500, 480, 520],            // early/mid/late/dry
-    dairy_buffalo:  [550, 550, 530, 580],            // bigger than cow
-    heifer:         [120, 250, 400],                 // calf/growing/pregnant
-    fattening_bull: [150, 250, 350],                 // starter/grower/finisher
-    dairy_goat:     [40, 40, 45, 40],                // local breed typical
-    fattening_goat: [20, 32],                        // grower/finisher
+    dairy_cow:      [500, 500, 480, 520],   // early/mid/late/dry
+    dairy_buffalo:  [550, 550, 530, 580],   // bigger than cow
+    heifer:         [120, 250, 400],        // calf/growing/pregnant
+    fattening_bull: [150, 250, 350],        // starter/grower/finisher
+    dairy_goat:     [40,  40,  45,  40],    // local breed typical
+    fattening_goat: [20,  32],              // grower/finisher
   };
 
   return table[animalId]?.[stageIndex] ?? 400;
 }
 
-/** Whether the given stage is a lactating stage (milk yield field is meaningful). */
+/**
+ * True if the given stage is lactating — i.e. milk yield is a meaningful input
+ * for the concentrate calculation. The UI uses this to decide whether to show
+ * the Milk Yield field.
+ */
 export function isLactatingStage(animalId: string | null, stageIndex: number): boolean {
   if (!animalId) return false;
-  const rule = RULES[animalId]?.[stageIndex];
-  if (!rule) return false;
-  // Lactating = concentrate ≥ 30% AND it's a dairy species
-  const isDairy = animalId === 'dairy_cow' || animalId === 'dairy_buffalo' || animalId === 'dairy_goat';
-  return isDairy && rule.concPct >= 30;
+  return RULES[animalId]?.[stageIndex]?.mode === 'lactation';
+}
+
+/** The feeding mode for a given stage — UI uses this to swap labels. */
+export function getFeedingMode(animalId: string | null, stageIndex: number): FeedingMode | null {
+  if (!animalId) return null;
+  return RULES[animalId]?.[stageIndex]?.mode ?? null;
+}
+
+function round(val: number, decimals: number): number {
+  const f = 10 ** decimals;
+  return Math.round(val * f) / f;
 }
