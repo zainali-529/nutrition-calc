@@ -265,6 +265,51 @@ html {
 button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparent; }
 
 /* ──────────────────────────────────────────────────────────────────────────
+ *  PRINT STYLES — when the user clicks "Print Recipe" on Step 5, the entire
+ *  app UI (header, stepper, action buttons, etc.) is hidden and the
+ *  `.printable-recipe` block is shown full-width with no decorations.
+ *
+ *  The PrintableRecipe component renders a .printable-recipe div that
+ *  is hidden on screen via Tailwind's `print:block hidden` utilities, and
+ *  then made the only visible content here at @media print.
+ * ────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Strip away decorations + backgrounds */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  body::before { display: none !important; }
+
+  /* Hide everything by default */
+  body * { visibility: hidden; }
+
+  /* Then show only the printable recipe and its descendants */
+  .printable-recipe,
+  .printable-recipe * { visibility: visible; }
+
+  .printable-recipe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 12mm !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  /* Toaster, modals, sticky headers — all hidden */
+  [data-sonner-toaster] { display: none !important; }
+
+  /* Avoid breaking tables across pages mid-row */
+  tr, h2 { page-break-inside: avoid; }
+
+  /* Keep page margins reasonable on A4 / Letter */
+  @page { margin: 10mm; }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
  *  Touch-aware reveal — on hover-capable devices (mouse) the element stays
  *  invisible until the parent .group is hovered, but on touch-only devices
  *  it's visible by default (since there's no hover state to trigger it).

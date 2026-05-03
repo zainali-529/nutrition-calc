@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { saveFormula } from '@/lib/savedFormulas';
 import { getOverride } from '@/lib/ingredientOverrides';
+import { PrintableRecipe } from './PrintableRecipe';
 
 interface Step5ActionsProps {
   language: 'en' | 'ur';
@@ -84,6 +85,10 @@ export function Step5Actions({
     createNew: language === 'en' ? 'Create New Formula' : 'نیا فارمولا بنائیں',
     createDesc: language === 'en' ? 'Start calculating another formula' : 'ایک اور فارمولا شروع کریں',
     saved: language === 'en' ? 'Formula saved successfully!' : 'فارمولا کامیابی سے محفوظ ہو گیا!',
+    printRecipe: language === 'en' ? 'Print Recipe' : 'فارمولا پرنٹ کریں',
+    printDesc:   language === 'en'
+      ? 'Print or save as PDF — take it to your feed mill or stick it on the feed bin.'
+      : 'پرنٹ کریں یا PDF محفوظ کریں — فیڈ مل کے لیے یا فیڈ ڈبے پر چپکائیں۔',
   };
 
   const handleSave = async () => {
@@ -153,6 +158,24 @@ export function Step5Actions({
     }
   };
 
+  /**
+   * Print the recipe sheet. Triggers the native print dialog — the user can
+   * either send to a real printer or "Save as PDF" from the dialog.
+   *
+   * The actual print rendering is driven by globals.css's @media print rules,
+   * which hide everything except the .printable-recipe block (rendered at the
+   * bottom of this component).
+   */
+  const handlePrint = () => {
+    setLoadingAction('print');
+    try {
+      window.print();
+    } finally {
+      // Tiny defer so the print dialog has time to open before the spinner clears
+      setTimeout(() => setLoadingAction(null), 300);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -213,6 +236,14 @@ export function Step5Actions({
         />
 
         <ActionButton
+          icon="🖨️"
+          title={t.printRecipe}
+          description={t.printDesc}
+          onClick={handlePrint}
+          loading={loadingAction === 'print'}
+        />
+
+        <ActionButton
           icon="📄"
           title={t.downloadPDF}
           description={t.downloadDesc}
@@ -228,6 +259,17 @@ export function Step5Actions({
           loading={false}
         />
       </div>
+
+      {/* Print-only recipe sheet — invisible on screen, only rendered when the
+          user triggers `window.print()` via the Print Recipe button above. */}
+      <PrintableRecipe
+        language={language}
+        animal={animal}
+        stage={stage}
+        animalId={animalId}
+        stageIndex={stageIndex}
+        formula={formula}
+      />
 
       {/* Success Toast — sits above the iOS home indicator */}
       {savedSuccess && (

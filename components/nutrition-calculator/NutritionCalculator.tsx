@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bookmark, Layers } from 'lucide-react';
+import { Bookmark, HelpCircle, Layers } from 'lucide-react';
 import Link from 'next/link';
 import { Stepper } from './Stepper';
 import { LanguageSwitch } from './LanguageSwitch';
@@ -13,10 +13,13 @@ import { Step4Status } from './Step4Status';
 import { Step5Actions } from './Step5Actions';
 import { SavedFormulasModal } from './SavedFormulasModal';
 import { NutritionConflictModal, detectConflicts, type NutritionConflict } from './NutritionConflictModal';
+import { OnboardingModal, hasSeenOnboarding, markOnboardingSeen } from './OnboardingModal';
+import { GlossaryModal } from './GlossaryModal';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
 import { getIngredient, INGREDIENT_CATEGORIES, STAGES } from '@/lib/constants';
 import { saveOverride, type IngredientOverride } from '@/lib/ingredientOverrides';
 import type { SavedFormula } from '@/lib/savedFormulas';
+import type { QuickStartTemplate } from '@/lib/templates';
 
 /**
  * Merge an existing customised formula with the user's current ingredient
@@ -103,6 +106,20 @@ export function NutritionCalculator() {
 
   // Saved-formulas modal
   const [savedOpen, setSavedOpen] = useState(false);
+
+  // First-time onboarding modal — auto-shows on first visit (localStorage flag).
+  // Re-openable any time via the Help icon in the header.
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  useEffect(() => {
+    if (!hasSeenOnboarding()) setOnboardingOpen(true);
+  }, []);
+  const closeOnboarding = useCallback(() => {
+    markOnboardingSeen();
+    setOnboardingOpen(false);
+  }, []);
+
+  // Glossary modal — accessible from Help icon, explains nutrient abbreviations
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   // Nutrition conflict resolution
   const [conflictData, setConflictData] = useState<{
@@ -257,6 +274,35 @@ export function NutritionCalculator() {
     setAutoBalanceOnMount(false);
   }, []);
 
+  /**
+   * Quick-start template: jump straight to Step 3 with a pre-built recipe.
+   * Mirrors `applyLoadedFormula` but starts from a curated template instead
+   * of a user-saved formula. We DO want auto-balance to fire on top of the
+   * template's selection, so the LP gives a properly-tuned recipe (the
+   * template only specifies WHICH ingredients, not quantities).
+   */
+  const handleUseTemplate = useCallback((template: QuickStartTemplate) => {
+    setSelectedAnimal(template.animalId);
+    setSelectedStage(template.stageIndex);
+    setChosenIngredients({
+      energy:  template.chosenIngredients.energy,
+      protein: template.chosenIngredients.protein,
+      fiber:   template.chosenIngredients.fiber,
+      fat:     template.chosenIngredients.fat,
+    });
+    // Build initial even-distribution formula; Balanced LP will overwrite it
+    setFormula(buildFormula({
+      energy:  template.chosenIngredients.energy,
+      protein: template.chosenIngredients.protein,
+      fiber:   template.chosenIngredients.fiber,
+      fat:     template.chosenIngredients.fat,
+    }));
+    setCompletedSteps([0, 1]);
+    setCurrentStep(2);
+    // Run Balanced LP on Step 3 mount to populate proper kg values
+    setAutoBalanceOnMount(true);
+  }, []);
+
   const handleStepClick = (step: number) => {
     if (step <= Math.max(...completedSteps, currentStep)) {
       setCurrentStep(step);
@@ -297,6 +343,18 @@ export function NutritionCalculator() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Help — opens the bilingual nutrient glossary */}
+            <motion.button
+              onClick={() => setGlossaryOpen(true)}
+              whileHover={{ scale: 1.08, y: -1 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 transition-all tap-transparent"
+              title={language === 'en' ? 'What do these mean?' : 'ان کا کیا مطلب ہے؟'}
+              aria-label={language === 'en' ? 'Glossary' : 'لغت'}
+            >
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            </motion.button>
+
             {/* Switch to TMR (full-ration) calculator. Icon-only on mobile, with label on sm+. */}
             <Link
               href="/tmr"
@@ -328,6 +386,20 @@ export function NutritionCalculator() {
         language={language}
         onClose={() => setSavedOpen(false)}
         onLoad={handleLoadSaved}
+      />
+
+      {/* First-time onboarding (auto-shown once, re-openable from Help icon) */}
+      <OnboardingModal
+        isOpen={onboardingOpen}
+        language={language}
+        onClose={closeOnboarding}
+      />
+
+      {/* Bilingual nutrient glossary */}
+      <GlossaryModal
+        isOpen={glossaryOpen}
+        language={language}
+        onClose={() => setGlossaryOpen(false)}
       />
 
       {/* Nutrition Conflict Resolution Modal */}
@@ -375,6 +447,7 @@ export function NutritionCalculator() {
                   onAnimalSelect={handleAnimalSelect}
                   onStageSelect={handleStageSelect}
                   onNext={handleNextStep}
+                  onUseTemplate={handleUseTemplate}
                 />
               )}
               {currentStep === 1 && (

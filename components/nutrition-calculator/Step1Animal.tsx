@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { ANIMALS, STAGES, getNutritionRange, NutrientRange } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
+import { QuickStartTemplates } from './QuickStartTemplates';
+import type { QuickStartTemplate } from '@/lib/templates';
 
 interface Step1AnimalProps {
   language: 'en' | 'ur';
@@ -12,6 +14,8 @@ interface Step1AnimalProps {
   onStageSelect: (stage: number) => void;
   onNext: () => void;
   onBack?: () => void;
+  /** When provided, the Quick-Start gallery is shown above the animal grid. */
+  onUseTemplate?: (template: QuickStartTemplate) => void;
 }
 
 function formatRange(r: { min: number; max: number }, decimals: number, unit = '%'): string {
@@ -122,6 +126,7 @@ export function Step1Animal({
   onStageSelect,
   onNext,
   onBack,
+  onUseTemplate,
 }: Step1AnimalProps) {
   const isComplete = selectedAnimal !== null;
 
@@ -144,8 +149,15 @@ export function Step1Animal({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
+      className="space-y-6 sm:space-y-8"
     >
+      {/* Quick-start templates — only shown when the parent provides a handler
+          AND the user hasn't yet picked an animal. Once they engage with the
+          wizard manually, we hide the gallery to reduce visual clutter. */}
+      {onUseTemplate && !selectedAnimal && (
+        <QuickStartTemplates language={language} onUseTemplate={onUseTemplate} />
+      )}
+
       {/* Concentrate-vs-TMR Banner */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
         <span className="text-xl flex-shrink-0 leading-tight">🌾</span>

@@ -2,10 +2,11 @@
 
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bookmark, ArrowLeft } from 'lucide-react';
+import { Bookmark, ArrowLeft, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Stepper } from '@/components/nutrition-calculator/Stepper';
 import { LanguageSwitch } from '@/components/nutrition-calculator/LanguageSwitch';
+import { GlossaryModal } from '@/components/nutrition-calculator/GlossaryModal';
 import { STAGES } from '@/lib/constants';
 import { buildTmrFormula, type TmrFormulaItem } from '@/lib/tmrCalculations';
 import { getAnyIngredient, isForage } from '@/lib/forages';
@@ -72,6 +73,9 @@ export function TmrCalculator() {
 
   // Saved formulas modal
   const [savedOpen, setSavedOpen] = useState(false);
+
+  // Glossary modal — accessible from Help icon
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   // ── Step 1 handlers ───────────────────────────────────────────────────────
   const handleAnimalSelect = useCallback((animal: string) => {
@@ -221,6 +225,16 @@ export function TmrCalculator() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <motion.button
+              onClick={() => setGlossaryOpen(true)}
+              whileHover={{ scale: 1.08, y: -1 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 transition-all tap-transparent"
+              title={language === 'en' ? 'What do these mean?' : 'ان کا کیا مطلب ہے؟'}
+              aria-label={language === 'en' ? 'Glossary' : 'لغت'}
+            >
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            </motion.button>
+            <motion.button
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
               whileTap={{ scale: 0.95 }}
@@ -241,6 +255,13 @@ export function TmrCalculator() {
         language={language}
         onClose={() => setSavedOpen(false)}
         onLoad={handleLoadSaved}
+      />
+
+      {/* Bilingual nutrient glossary */}
+      <GlossaryModal
+        isOpen={glossaryOpen}
+        language={language}
+        onClose={() => setGlossaryOpen(false)}
       />
 
       {/* Main content */}
