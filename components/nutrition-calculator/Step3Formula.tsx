@@ -415,40 +415,56 @@ export function Step3Formula({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="bg-white rounded-lg p-4 border border-gray-200 flex items-center gap-4"
+              className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
             >
-              <span className="text-2xl">{getIngredientIcon(item.key)}</span>
+              {/* Top row on mobile: icon + name + remove button (right-aligned) */}
+              <div className="flex items-center gap-3 sm:contents">
+                <span className="text-2xl flex-shrink-0">{getIngredientIcon(item.key)}</span>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
-                  {hasOverride(item.key) && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title={language === 'en' ? 'Custom nutrition values' : 'ترمیم شدہ غذائیت'} />
-                  )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{item.name}</p>
+                    {hasOverride(item.key) && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title={language === 'en' ? 'Custom nutrition values' : 'ترمیم شدہ غذائیت'} />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {item.kg > 0 && `₨${((item.price || 0) * item.kg).toFixed(0)}`}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {item.kg > 0 && `₨${((item.price || 0) * item.kg).toFixed(0)}`}
-                </p>
+
+                {/* Mobile-only remove button — pushed to the right of the top row */}
+                {item.key !== 'mineral_mix' && (
+                  <motion.button
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => handleRemove(idx)}
+                    className="sm:hidden text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors flex-shrink-0 tap-transparent"
+                    title="Remove item"
+                    aria-label="Remove item"
+                  >
+                    ✕
+                  </motion.button>
+                )}
               </div>
 
-              <div className="flex gap-2 items-center">
+              {/* Bottom row on mobile: controls + inputs */}
+              <div className="flex gap-2 items-end flex-wrap sm:flex-nowrap">
                 {/* Edit nutrition — opens the detail modal */}
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={() => setEditingKey(item.key)}
-                  className="p-2 rounded transition-colors text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                  className="p-2 rounded transition-colors text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 tap-transparent"
                   title={language === 'en' ? 'Edit nutrition' : 'غذائیت ترمیم'}
+                  aria-label={language === 'en' ? 'Edit nutrition' : 'غذائیت ترمیم'}
                 >
                   <Pencil className="w-4 h-4" />
                 </motion.button>
 
                 {/* Lock toggle — when locked, Auto-Formulate keeps this kg fixed */}
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={() => handleToggleLock(idx)}
-                  className={`p-2 rounded transition-colors ${
+                  className={`p-2 rounded transition-colors tap-transparent ${
                     item.locked
                       ? 'text-amber-700 bg-amber-100 hover:bg-amber-200'
                       : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
@@ -458,11 +474,12 @@ export function Step3Formula({
                       ? (language === 'en' ? 'Unlock (let Auto-Formulate adjust)' : 'غیر مقفل')
                       : (language === 'en' ? 'Lock at this value (Auto-Formulate will preserve)' : 'اس قدر پر مقفل کریں')
                   }
+                  aria-label={item.locked ? 'Unlock' : 'Lock'}
                 >
                   {item.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                 </motion.button>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[80px]">
                   <label className={`text-xs ${item.locked ? 'text-amber-700 font-semibold' : 'text-gray-500'}`}>
                     {t.weight}{item.locked && ' 🔒'}
                   </label>
@@ -472,11 +489,11 @@ export function Step3Formula({
                     onChange={(e) => handleWeightChange(idx, parseFloat(e.target.value) || 0)}
                     min="0"
                     step="0.1"
-                    className={`w-24 text-sm ${item.locked ? 'bg-amber-50 border-amber-300 font-semibold text-amber-900' : ''}`}
+                    className={`w-full sm:w-24 text-sm h-10 ${item.locked ? 'bg-amber-50 border-amber-300 font-semibold text-amber-900' : ''}`}
                   />
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[80px]">
                   <label className="text-xs text-gray-500">{t.price}</label>
                   <Input
                     type="number"
@@ -485,17 +502,18 @@ export function Step3Formula({
                     placeholder="0"
                     min="0"
                     step="1"
-                    className="w-24 text-sm"
+                    className="w-full sm:w-24 text-sm h-10"
                   />
                 </div>
 
+                {/* Desktop-only remove button — keeps the dense single-row layout. */}
                 {item.key !== 'mineral_mix' && (
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleRemove(idx)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors"
+                    className="hidden sm:block text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors tap-transparent"
                     title="Remove item"
+                    aria-label="Remove item"
                   >
                     ✕
                   </motion.button>
@@ -571,12 +589,12 @@ export function Step3Formula({
         )}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1">
+      {/* Action Buttons — taller tap targets on mobile */}
+      <div className="flex gap-3 pt-6 sm:pt-8">
+        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
           {t.back}
         </Button>
-        <Button onClick={onNext} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
           {t.next}
         </Button>
       </div>

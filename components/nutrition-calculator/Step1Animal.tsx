@@ -183,8 +183,9 @@ export function Step1Animal({
               <motion.button
                 key={idx}
                 onClick={() => onStageSelect(idx)}
-                whileHover={{ x: 8 }}
-                className={`p-3 rounded-lg border-2 transition-all font-medium text-left ${
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`min-h-[48px] px-4 py-3 rounded-lg border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
                   selectedStage === idx
                     ? 'border-violet-500 bg-violet-50 text-violet-900'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-violet-300'
@@ -200,17 +201,17 @@ export function Step1Animal({
       {/* Target-Range Preview */}
       {activeRange && <TargetCard language={language} range={activeRange} />}
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-8">
+      {/* Action Buttons — taller tap targets on mobile */}
+      <div className="flex gap-3 pt-6 sm:pt-8">
         {onBack && (
-          <Button variant="outline" onClick={onBack} className="flex-1">
+          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
             {t.back}
           </Button>
         )}
         <Button
           onClick={onNext}
           disabled={!isComplete}
-          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
         >
           {t.next}
         </Button>

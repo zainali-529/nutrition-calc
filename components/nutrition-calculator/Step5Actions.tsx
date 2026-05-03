@@ -160,19 +160,19 @@ export function Step5Actions({
       exit={{ opacity: 0, y: -20 }}
       className="space-y-8"
     >
-      {/* Success Banner */}
+      {/* Success Banner — tighter on mobile */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg p-8 text-white text-center"
+        className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg p-5 sm:p-8 text-white text-center"
       >
-        <div className="text-5xl mb-4">🎉</div>
-        <h2 className="text-3xl font-bold mb-2">{t.formulaComplete}</h2>
-        <p className="text-emerald-100">{t.congratulations}! Your formula is ready to use.</p>
+        <div className="text-4xl sm:text-5xl mb-2 sm:mb-4">🎉</div>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">{t.formulaComplete}</h2>
+        <p className="text-emerald-100 text-sm sm:text-base">{t.congratulations}! Your formula is ready to use.</p>
       </motion.div>
 
       {/* Formula Summary */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
         <h3 className="font-bold text-lg mb-4">Formula Summary</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
@@ -229,13 +229,13 @@ export function Step5Actions({
         />
       </div>
 
-      {/* Success Toast */}
+      {/* Success Toast — sits above the iOS home indicator */}
       {savedSuccess && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-6 left-6 right-6 bg-green-500 text-white rounded-lg p-4 shadow-lg"
+          className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 bg-green-500 text-white rounded-lg p-4 shadow-lg z-50 mb-safe-bottom"
         >
           ✓ {t.saved}
         </motion.div>

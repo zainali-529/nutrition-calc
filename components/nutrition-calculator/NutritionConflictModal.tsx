@@ -115,13 +115,13 @@ export function NutritionConflictModal({
           />
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{    opacity: 0, y: 40, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-lg z-[61] max-h-[85vh] flex flex-col"
+            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[92vw] max-w-lg z-[61] max-h-[92vh] sm:max-h-[85vh] flex flex-col pb-safe-bottom sm:pb-0"
           >
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
               {/* Header */}
               <div className="bg-amber-50 border-b border-amber-200 px-5 py-4 flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">

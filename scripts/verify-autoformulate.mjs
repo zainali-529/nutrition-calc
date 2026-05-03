@@ -220,4 +220,13 @@ runScenario('Scenario 5a — Mode: min_cost',    ALL, dairyMidLact, { mode: 'min
 runScenario('Scenario 5b — Mode: max_protein', ALL, dairyMidLact, { mode: 'max_protein' });
 runScenario('Scenario 5c — Mode: max_energy',  ALL, dairyMidLact, { mode: 'max_energy'  });
 
+// ── Urea (NPN) — verify the 1.5% cap binds and urea reduces cost vs baseline ─
+// Urea has CP=287 (46% N × 6.25), zero everything else. The strict 1.5% cap is
+// the safety mechanism preventing ammonia toxicity. The LP should:
+//   (a) consume urea right up to the cap (cheapest CP per kg)
+//   (b) reduce overall mix cost vs. the urea-free baseline (Scenario 1)
+console.log('\n────── UREA (NPN): 1.5% cap should bind, total cost should drop ──────');
+INGS.urea = { dm: 99, cp: 287, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0, ca: 0, p: 0, ash: 0, price: 100, maxInclusion: 1.5 };
+runScenario('Scenario 6 — ALL + urea, dairy mid lactation', [...ALL, 'urea'], dairyMidLact);
+
 console.log('');

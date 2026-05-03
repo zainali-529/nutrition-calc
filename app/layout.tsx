@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -10,6 +11,15 @@ export const metadata: Metadata = {
   title: 'Farm Nutrition Calculator | چارے کا فارمولا',
   description: 'Professional livestock nutrition formula calculator for dairy farmers',
   generator: 'v0.app',
+  applicationName: 'Farm Nutrition',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Farm Nutrition',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       {
@@ -29,6 +39,17 @@ export const metadata: Metadata = {
   },
 }
 
+// Mobile-first viewport: prevent unwanted zoom on input focus, allow notch
+// safe-area insets to be honoured via env(safe-area-inset-*) in CSS, and let
+// the body scroll naturally without horizontal overflow.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#059669',
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -44,6 +65,12 @@ export default function RootLayout({
         backgroundRepeat: 'repeat, repeat'
       }}>
         {children}
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          offset="env(safe-area-inset-top, 16px)"
+        />
         <Analytics />
       </body>
     </html>

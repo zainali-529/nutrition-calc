@@ -67,15 +67,15 @@ export function IngredientDetailModal({
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
           />
 
-          {/* Modal */}
+          {/* Modal — bottom sheet on mobile, centered card on desktop */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{    opacity: 0, y: 40, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] sm:w-[85vw] lg:w-[75vw] max-w-4xl z-[71] max-h-[90vh] overflow-y-auto"
+            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[85vw] lg:w-[75vw] max-w-4xl z-[71] max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe-bottom sm:pb-0"
           >
-            <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-2xl border border-white/40 overflow-hidden">
+            <div className="bg-gradient-to-br from-white to-slate-50 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-white/40 overflow-hidden">
               {/* Header */}
               <div className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-6 text-white">
                 <div className="flex items-start justify-between">

@@ -44,16 +44,59 @@ export function Stepper({
 
   return (
     <div className="w-full">
-      {/* Professional Header */}
+      {/* ──────── MOBILE: compact, slim stepper ──────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="sm:hidden mb-4"
+      >
+        <div className="bg-white/90 backdrop-blur-md rounded-xl px-4 py-3 border border-gray-100 shadow-md shadow-gray-200/40">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center text-base font-bold shadow-md shadow-emerald-400/30 flex-shrink-0">
+                {STEP_ICONS[language][currentStep]}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide leading-none">
+                  Step {currentStep + 1} / {totalSteps}
+                </p>
+                <p className="text-sm font-bold text-slate-800 leading-tight truncate">
+                  {STEP_LABELS[language][currentStep].title}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-emerald-600 flex-shrink-0">{progressPercentage}%</span>
+          </div>
+
+          {/* Mini-dots row + progress bar */}
+          <div className="mt-2.5 flex items-center gap-1.5">
+            {Array.from({ length: totalSteps }).map((_, idx) => {
+              const isActive = idx === currentStep;
+              const isCompleted = completedSteps.includes(idx) || idx < currentStep;
+              const isUpcoming = idx > currentStep && !isCompleted;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => !isUpcoming && onStepClick?.(idx)}
+                  disabled={isUpcoming}
+                  className={`flex-1 h-1.5 rounded-full transition-all ${
+                    isActive ? 'bg-emerald-500' : isCompleted ? 'bg-emerald-300' : 'bg-gray-200'
+                  } ${isUpcoming ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  aria-label={`Go to step ${idx + 1}`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ──────── DESKTOP: rich, decorated stepper ──────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-12"
+        className="hidden sm:block mb-12"
       >
         <div className="relative">
-          {/* Gradient Background - Removed for cleaner look */}
-          {/* <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 via-blue-50 to-emerald-50 rounded-2xl blur-xl opacity-40" /> */}
-
           {/* Main Container */}
           <div className="relative bg-white/90 backdrop-blur-md rounded-2xl p-8 border border-gray-100 shadow-xl shadow-gray-200/50">
             {/* Step Indicators */}
@@ -190,12 +233,12 @@ export function Stepper({
         </div>
       </motion.div>
 
-      {/* Step Counter Badge - Floating */}
+      {/* Step Counter Badge - Floating (desktop only — mobile already shows it inline) */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="flex justify-center mb-6"
+        className="hidden sm:flex justify-center mb-6"
       >
         <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-full border border-emerald-200 shadow-lg shadow-emerald-100/30 backdrop-blur-sm">
           <div className="flex items-center gap-1.5">

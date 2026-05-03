@@ -225,12 +225,12 @@ export function Step4Status({
         </p>
       </motion.div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1">
+      {/* Action Buttons — taller tap targets on mobile */}
+      <div className="flex gap-3 pt-6 sm:pt-8">
+        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
           {t.back}
         </Button>
-        <Button onClick={onNext} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
           {t.next}
         </Button>
       </div>

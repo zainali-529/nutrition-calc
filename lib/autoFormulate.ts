@@ -113,12 +113,45 @@ export interface AutoFormulateSuccess {
   diagnostics: Diagnostics;
 }
 
+/**
+ * A single nutrient that the selected ingredients cannot satisfy.
+ * `direction` says which side of the target window is unreachable, and
+ * `achievable` is the greedy best-case (for too_low) or worst-case (for too_high).
+ */
+export interface NutrientGap {
+  /** App's range key: 'protein' | 'energy' | 'tdn' | 'fiber' | 'fat' | 'calcium' | 'phosphorus' */
+  nutrient: string;
+  /** 'too_low' = even greedy max can't reach min; 'too_high' = even greedy min stays above max */
+  direction: 'too_low' | 'too_high';
+  /** The greedy extreme value (best for too_low, worst for too_high) on DM basis */
+  achievable: number;
+  /** The violated bound (range.min for too_low, range.max for too_high) */
+  required: number;
+}
+
+/**
+ * Structured form of the infeasibility diagnostic — designed for friendly UIs.
+ *
+ *   hardBlockers         — nutrients individually unreachable (Pass 1 of the diagnostic)
+ *   conflictingNutrients — nutrients that ARE individually reachable but can't all be hit
+ *                          together (Pass 2 — relax-and-solve)
+ *   suggestedAdditions   — ingredient keys (e.g. 'sbm', 'wheat_grain') that the user
+ *                          hasn't selected yet and that would help close the gaps
+ */
+export interface InfeasibilityAnalysis {
+  hardBlockers: NutrientGap[];
+  conflictingNutrients: string[];
+  suggestedAdditions: string[];
+}
+
 export interface AutoFormulateFailure {
   success: false;
   /** User-friendly reason (bilingual-safe; caller translates). */
   reason: 'infeasible' | 'missing_data' | 'no_ingredients';
-  /** Diagnostic hint — which nutrient(s) or sources are the bottleneck. */
+  /** Diagnostic hint — which nutrient(s) or sources are the bottleneck (legacy string form). */
   bottleneck?: string;
+  /** Same diagnosis in structured form, for richer UIs that want to render bullets/labels. */
+  analysis?: InfeasibilityAnalysis;
 }
 
 export type AutoFormulateResult = AutoFormulateSuccess | AutoFormulateFailure;
@@ -239,12 +272,13 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
   }
 
   if (!result || result.feasible === false) {
-    return {
-      success: false,
-      reason: 'infeasible',
-      // Skip diagnosis if we're already inside a diagnostic probe call
-      bottleneck: input._skipDiagnosis ? undefined : diagnoseBottleneck(input, ingredients),
-    };
+    // Skip diagnosis if we're already inside a diagnostic probe call (Pass 2
+    // recursion would otherwise blow up).
+    if (input._skipDiagnosis) {
+      return { success: false, reason: 'infeasible' };
+    }
+    const { summary, analysis } = diagnoseBottleneck(input, ingredients);
+    return { success: false, reason: 'infeasible', bottleneck: summary, analysis };
   }
 
   // Extract per-ingredient quantities. Solver omits zero-valued variables, so
@@ -361,7 +395,10 @@ function buildDiagnostics(
 // Keep this fast & approximate — it's a hint for the user, not exact.
 // ---------------------------------------------------------------------------
 
-function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): string {
+function diagnoseBottleneck(
+  input: AutoFormulateInput,
+  ings: Ingredient[],
+): { summary: string; analysis: InfeasibilityAnalysis } {
   const batchSize = input.batchSize ?? 100;
 
   // -------------------------------------------------------------------------
@@ -369,7 +406,7 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
   //   If ANY nutrient is impossible on its own (best/worst case greedy fill
   //   can't reach the target range), that's the clear blocker.
   // -------------------------------------------------------------------------
-  const individualBlockers: string[] = [];
+  const hardBlockers: NutrientGap[] = [];
   for (const c of CONSTRAINED) {
     const sortedDesc = [...ings].sort(
       (a, b) => b[c.field] * (b.dm / 100) - a[c.field] * (a.dm / 100)
@@ -380,11 +417,25 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
     const minVal = greedyConcentration(sortedAsc,  c.field, batchSize);
     const { min: targetMin, max: targetMax } = input.ranges[c.rangeKey];
 
-    if (maxVal < targetMin) individualBlockers.push(`${c.key} too low (max achievable ≈ ${maxVal.toFixed(2)}, need ≥ ${targetMin})`);
-    if (minVal > targetMax) individualBlockers.push(`${c.key} too high (min achievable ≈ ${minVal.toFixed(2)}, need ≤ ${targetMax})`);
+    if (maxVal < targetMin) hardBlockers.push({ nutrient: c.key, direction: 'too_low',  achievable: round(maxVal, 2), required: targetMin });
+    if (minVal > targetMax) hardBlockers.push({ nutrient: c.key, direction: 'too_high', achievable: round(minVal, 2), required: targetMax });
   }
-  if (individualBlockers.length > 0) {
-    return individualBlockers.join('; ');
+
+  if (hardBlockers.length > 0) {
+    const summary = hardBlockers.map((g) =>
+      g.direction === 'too_low'
+        ? `${g.nutrient} too low (max achievable ≈ ${g.achievable.toFixed(2)}, need ≥ ${g.required})`
+        : `${g.nutrient} too high (min achievable ≈ ${g.achievable.toFixed(2)}, need ≤ ${g.required})`
+    ).join('; ');
+    const suggestions = suggestMissingIngredients(ings, hardBlockers.map((g) => g.nutrient));
+    return {
+      summary,
+      analysis: {
+        hardBlockers,
+        conflictingNutrients: [],
+        suggestedAdditions: suggestions.map((s) => s.key),
+      },
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -393,7 +444,7 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
   //   infeasible. Relax ONE nutrient constraint at a time and see which
   //   relaxation unlocks feasibility → that's the binding pair.
   // -------------------------------------------------------------------------
-  const relaxBlockers: string[] = [];
+  const conflictingNutrients: string[] = [];
   for (const c of CONSTRAINED) {
     const { min: tMin, max: tMax } = input.ranges[c.rangeKey];
     // Widen the range to ±50% of its width to test if it's the bottleneck
@@ -408,7 +459,7 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
       _skipDiagnosis: true,   // prevent recursion
     });
     if (testResult.success) {
-      relaxBlockers.push(c.key);
+      conflictingNutrients.push(c.key);
     }
   }
 
@@ -416,53 +467,74 @@ function diagnoseBottleneck(input: AutoFormulateInput, ings: Ingredient[]): stri
   // Pass 3 — ingredient-gap suggestions
   //   Based on which nutrients seem binding, suggest concrete ingredients.
   // -------------------------------------------------------------------------
-  const suggestions = suggestMissingIngredients(ings, relaxBlockers);
+  const suggestions = suggestMissingIngredients(ings, conflictingNutrients);
 
   const parts: string[] = [];
-  if (relaxBlockers.length > 0) {
-    parts.push(`conflicting: ${relaxBlockers.join(' + ')}`);
+  if (conflictingNutrients.length > 0) {
+    parts.push(`conflicting: ${conflictingNutrients.join(' + ')}`);
   }
   if (suggestions.length > 0) {
-    parts.push(`try adding: ${suggestions.join(' or ')}`);
+    parts.push(`try adding: ${suggestions.map((s) => s.description).join(' or ')}`);
   }
-  return parts.length > 0
+  const summary = parts.length > 0
     ? parts.join(' · ')
     : 'constraints cannot all be satisfied simultaneously';
+
+  return {
+    summary,
+    analysis: {
+      hardBlockers: [],
+      conflictingNutrients,
+      suggestedAdditions: suggestions.map((s) => s.key),
+    },
+  };
 }
 
 /**
  * Suggest concrete ingredient additions based on which nutrient constraints
- * are binding. Matches against a curated list of "high-impact" Pakistani
- * ingredients the user likely hasn't selected yet.
+ * are binding. Returns ingredient keys + a short human-readable description
+ * (used by the legacy `bottleneck` string formatter). Matches against a
+ * curated list of "high-impact" Pakistani ingredients the user likely hasn't
+ * selected yet.
  */
 function suggestMissingIngredients(
   selected: Ingredient[],
   binding: string[],
-): string[] {
+): Array<{ key: string; description: string }> {
   const selectedKeys = new Set(selected.map((i) => i.key));
-  const tips: string[] = [];
+  const tips: Array<{ key: string; description: string }> = [];
 
   const hasKey = (k: string) => selectedKeys.has(k);
   const needsMoreProtein = binding.includes('protein') || binding.includes('tdn');
   const needsLessFibre   = binding.includes('fiber');
   const needsMoreEnergy  = binding.includes('energy');
+  const needsMoreCalcium = binding.includes('calcium');
+  const needsMorePhos    = binding.includes('phosphorus');
 
   // High-protein + low-fibre picks (SBM, CGM 60, canola)
   if (needsMoreProtein || needsLessFibre) {
-    if (!hasKey('sbm')) tips.push('Soybean Meal (SBM) — 46% CP, low fibre');
-    else if (!hasKey('corn_gluten_meal')) tips.push('Corn Gluten Meal 60% — premium protein, very low fibre');
-    else if (!hasKey('canola_meal')) tips.push('Canola Meal — 36% CP');
+    if (!hasKey('sbm')) tips.push({ key: 'sbm', description: 'Soybean Meal (SBM) — 46% CP, low fibre' });
+    else if (!hasKey('corn_gluten_meal')) tips.push({ key: 'corn_gluten_meal', description: 'Corn Gluten Meal 60% — premium protein, very low fibre' });
+    else if (!hasKey('canola_meal')) tips.push({ key: 'canola_meal', description: 'Canola Meal — 36% CP' });
   }
 
   // High-energy picks
   if (needsMoreEnergy) {
-    if (!hasKey('wheat_grain')) tips.push('Wheat Grain — 3.28 Mcal/kg DM');
-    if (!hasKey('bypassFat')) tips.push('Bypass Fat — 4.78 Mcal/kg DM');
+    if (!hasKey('wheat_grain')) tips.push({ key: 'wheat_grain', description: 'Wheat Grain — 3.28 Mcal/kg DM' });
+    if (!hasKey('bypassFat'))   tips.push({ key: 'bypassFat',   description: 'Bypass Fat — 4.78 Mcal/kg DM' });
   }
 
   // Fibre too high → alternative low-fibre options
   if (needsLessFibre) {
-    if (!hasKey('broken_rice')) tips.push('Broken Rice (Tukri) — very low fibre, high starch');
+    if (!hasKey('broken_rice')) tips.push({ key: 'broken_rice', description: 'Broken Rice (Tukri) — very low fibre, high starch' });
+  }
+
+  // Mineral gaps
+  if (needsMoreCalcium && !hasKey('limestone')) {
+    tips.push({ key: 'limestone', description: 'Limestone — 36% Ca' });
+  }
+  if (needsMorePhos && !hasKey('dcp')) {
+    tips.push({ key: 'dcp', description: 'DCP — 18% P + 22% Ca' });
   }
 
   return tips.slice(0, 3); // cap to top 3 to keep message short

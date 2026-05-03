@@ -90,15 +90,15 @@ export function SavedFormulasModal({ isOpen, language, onClose, onLoad }: SavedF
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
           />
 
-          {/* Modal */}
+          {/* Modal — bottom sheet on mobile, centered card on desktop */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{    opacity: 0, y: 40, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] sm:w-[80vw] lg:w-[70vw] max-w-3xl z-[71] max-h-[85vh] flex flex-col"
+            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[80vw] lg:w-[70vw] max-w-3xl z-[71] max-h-[92vh] sm:max-h-[85vh] flex flex-col pb-safe-bottom sm:pb-0"
           >
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full">
               {/* Header */}
               <div className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 text-white flex items-start justify-between flex-shrink-0">
                 <div className="flex items-start gap-3">

@@ -17,6 +17,7 @@
 // ================================================================================
 
 import { getOverride } from './ingredientOverrides';
+import { getCustomIngredient, getCustomIngredients } from './customIngredients';
 
 export type IngredientCategory = 'energy' | 'protein' | 'fiber' | 'fat';
 export type IntensityLevel = 'high' | 'med' | 'low';
@@ -97,6 +98,20 @@ export const INGREDIENTS: Ingredient[] = [
     capReasonUr: 'گندم سے محفوظ کیونکہ نشاستہ درمیانی رفتار سے ہضم، مگر 40% سے زیادہ فائبر کم اور لاگت بڑھ جاتی ہے۔',
     notesEn: 'Good energy, safer than wheat for rumen',
     notesUr: 'اچھی توانائی، رومین کے لیے گندم سے محفوظ',
+  },
+  {
+    // Common in Sindh and southern Punjab. Slightly less digestible than corn
+    // because of kafirin proteins surrounding the starch granules; red varieties
+    // also carry tannins that bind dietary protein.
+    key: 'sorghum', category: 'energy', icon: '🟥',
+    nameEn: 'Sorghum (Jowar)', nameUr: 'جوار',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 89, cp: 10, me: 3.15, tdn: 84, adf: 6, ndf: 13, fat: 3, starch: 70,
+    ca: 0.04, p: 0.30, ash: 2, price: 80, maxInclusion: 35,
+    capReasonEn: 'Tannins in red sorghum bind dietary protein and reduce digestibility. Kafirin proteins make the starch less digestible than corn (~5-10% lower). Over 35% noticeably reduces ADG and milk yield, and pale-yellow milk fat may result.',
+    capReasonUr: 'سرخ جوار میں ٹینن پروٹین کو باندھتے ہیں، کفیرین مکئی کے مقابلے نشاستہ کم ہضم بناتے ہیں۔ 35% سے زیادہ پر دودھ اور وزن بڑھنا کم ہو سکتا ہے۔',
+    notesEn: 'Cheaper alternative to corn — common in Sindh/southern Punjab. Grind for best digestion.',
+    notesUr: 'مکئی کا سستا متبادل — سندھ اور جنوبی پنجاب میں عام۔ بہترین ہاضمے کے لیے پیسیں۔',
   },
   {
     key: 'millet', category: 'energy', icon: '🟡',
@@ -224,6 +239,33 @@ export const INGREDIENTS: Ingredient[] = [
     notesUr: 'چکنائی اور کیلشیم زیادہ — دودھ کے لیے اچھی۔ جنوبی پنجاب۔',
   },
   {
+    // Major Pakistani protein source — high quality when fresh, but the
+    // single most aflatoxin-prone feed ingredient in the country. Always
+    // smell-check and request a lab certificate during monsoon.
+    key: 'groundnut_cake', category: 'protein', icon: '🥜',
+    nameEn: 'Groundnut Cake (Mongphali Khal)', nameUr: 'مونگ پھلی کھل',
+    energyLevel: 'med', proteinLevel: 'high',
+    dm: 91, cp: 46, me: 2.85, tdn: 78, adf: 9, ndf: 16, fat: 7, starch: 7,
+    ca: 0.18, p: 0.65, ash: 5, price: 220, maxInclusion: 20,
+    capReasonEn: 'Extreme aflatoxin risk — Aspergillus flavus thrives in humid Pakistani storage and aflatoxin passes into milk (M1) and damages the liver. Lysine and methionine deficient — over 20% causes amino acid imbalance reducing milk yield. Always lab-test monsoon stocks.',
+    capReasonUr: 'افلاٹوکسین کا انتہائی خطرہ — Aspergillus کی نمو پاکستانی نمی میں بہت تیز، دودھ میں منتقل اور جگر کو نقصان۔ لائیسن اور میتھیونین کی کمی — 20% سے زیادہ امینو ایسڈ توازن بگڑتا ہے اور دودھ کم۔ مانسون کے ذخیرے کا ٹیسٹ ضروری۔',
+    notesEn: 'Premium Pakistani protein — palatable and energy-rich. Test for aflatoxin before buying in monsoon.',
+    notesUr: 'پاکستانی اعلی پروٹین — جانور پسند کرتا ہے۔ مانسون میں خریدنے سے پہلے افلاٹوکسین ٹیسٹ کرائیں۔',
+  },
+  {
+    // Traditional Pakistani dairy ingredient. Feeds known to give a richer
+    // yellow ghee color (from omega-3 fatty acids reducing milk fat oxidation).
+    key: 'linseed_cake', category: 'protein', icon: '🟪',
+    nameEn: 'Linseed Cake (Alsi Khal)', nameUr: 'السی کھل',
+    energyLevel: 'med', proteinLevel: 'high',
+    dm: 90, cp: 33, me: 2.55, tdn: 70, adf: 17, ndf: 26, fat: 8, starch: 5,
+    ca: 0.40, p: 0.85, ash: 6, price: 160, maxInclusion: 15,
+    capReasonEn: 'Mucilage (soluble fibre gel) slows rumen passage, and linamarin (cyanogenic glycoside) is mildly toxic at high intake. Residual oil is rich in omega-3 — turns rancid in heat. Over 15% reduces feed intake and oxidation risk increases.',
+    capReasonUr: 'مسلیج رومن کی حرکت سست کرتا ہے، لینامارین (سائینوجنک) معتدل سمی۔ بقیہ تیل اومیگا-3 سے بھرپور — گرمی میں جلد خراب۔ 15% سے زیادہ پر کھانا کم اور خرابی کا خطرہ۔',
+    notesEn: 'Improves milk fat and ghee color (omega-3). Store in cool, dry place — limited shelf life in heat.',
+    notesUr: 'دودھ کی چکنائی اور گھی کا رنگ بہتر کرتی ہے (اومیگا-3)۔ ٹھنڈی خشک جگہ رکھیں — گرمی میں جلد خراب۔',
+  },
+  {
     key: 'guar', category: 'protein', icon: '🫛',
     nameEn: 'Guar Meal (Guar Khal)', nameUr: 'گوار کھل',
     energyLevel: 'low', proteinLevel: 'high',
@@ -233,6 +275,20 @@ export const INGREDIENTS: Ingredient[] = [
     capReasonUr: 'ٹرپسن روکنے والے، سیپونن اور سائینوجنک مرکبات — بھوننے کے بعد بھی۔ 15% سے زیادہ پروٹین ہضم کم اور تلخ ذائقے سے جانور انکار کرتا ہے۔',
     notesEn: 'Must be toasted — raw has anti-nutritional factors. Limit to 15%.',
     notesUr: 'بھون کر استعمال کریں — کچی میں نقصان دہ عوامل۔ 15% تک۔',
+  },
+  {
+    // Feed-grade dal chana — typically broken / discoloured chickpea grains
+    // rejected from human food sorting. Both protein-rich AND energy-dense
+    // (45% starch), so it dual-counts as a partial energy source too.
+    key: 'dal_chana', category: 'protein', icon: '🟢',
+    nameEn: 'Dal Chana (Chickpea Grain)', nameUr: 'دال چنا',
+    energyLevel: 'high', proteinLevel: 'med',
+    dm: 89, cp: 22, me: 3.10, tdn: 80, adf: 6, ndf: 14, fat: 5, starch: 45,
+    ca: 0.20, p: 0.40, ash: 3.5, price: 120, maxInclusion: 25,
+    capReasonEn: 'Raw chickpea contains trypsin inhibitors and raffinose-family oligosaccharides — cause flatulence and reduced protein digestion. Over 25% rarely justified economically vs. cheaper oilcakes. Roasting / soaking improves utilisation.',
+    capReasonUr: 'کچے چنے میں ٹرپسن روکنے والے اور رفنوز شکر — گیس اور پروٹین ہضم میں کمی۔ 25% سے زیادہ مہنگا — تیلی کھلوں کے مقابلے غیر مفید۔ بھوننے یا بھگونے سے بہتر۔',
+    notesEn: 'Feed-grade broken chana — protein + starch combined. Roast or soak for best digestion.',
+    notesUr: 'فیڈ گریڈ ٹوٹا چنا — پروٹین اور نشاستہ دونوں۔ بھون کر یا بھگو کر استعمال بہتر۔',
   },
   {
     key: 'corn_gluten_feed', category: 'protein', icon: '🌽',
@@ -278,6 +334,22 @@ export const INGREDIENTS: Ingredient[] = [
     notesEn: 'High fat (20%) — limit to 3-4 kg/day for dairy. Contains gossypol.',
     notesUr: 'چکنائی 20% — دودھ کے لیے 3-4 کلو/دن تک۔ گوسیپول ہوتا ہے۔',
   },
+  {
+    // Urea = non-protein nitrogen (NPN). Rumen microbes convert urea → ammonia →
+    // microbial protein. The "cp" value here is the standard NPN convention:
+    // 46% N × 6.25 = 287.5% crude-protein equivalent. The LP treats it like any
+    // other CP source; the strict 1.5% maxInclusion cap is what prevents ammonia
+    // toxicity. Suitable ONLY for adult ruminants with a developed rumen.
+    key: 'urea', category: 'protein', icon: '⚗️',
+    nameEn: 'Urea (Feed Grade)', nameUr: 'یوریا',
+    energyLevel: 'low', proteinLevel: 'high',
+    dm: 99, cp: 287, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 100, maxInclusion: 1.5,
+    capReasonEn: 'Urea is non-protein nitrogen — rumen microbes convert it to true protein. Above 1.5% of concentrate, ammonia is released faster than microbes can capture it, causing alkalosis, muscle tetany, and death within hours. NEVER feed to calves under 3 months (no functional rumen) or to monogastrics. Must be mixed uniformly — hot spots can kill an animal that eats them.',
+    capReasonUr: 'یوریا غیر پروٹینی نائٹروجن ہے — رومن کے جراثیم اسے اصلی پروٹین میں بدلتے ہیں۔ کانسنٹریٹ میں 1.5% سے زیادہ پر امونیا جراثیم کی صلاحیت سے زیادہ تیزی سے بنتی ہے، جس سے الکلوسس، تشنج اور چند گھنٹوں میں موت۔ 3 ماہ سے کم بچھڑوں اور غیر مویشی جانوروں کو ہرگز نہ دیں۔ یکساں مکس کرنا لازمی — ایک جگہ زیادہ مقدار جان لیوا۔',
+    notesEn: 'NPN source — 1 kg urea ≈ 2.6 kg soybean meal protein-equivalent at a fraction of the cost. Adult ruminants only. Mix uniformly with grain (starch feeds the microbes that use the N). Introduce gradually over 2–3 weeks.',
+    notesUr: 'NPN ذریعہ — 1 کلو یوریا تقریباً 2.6 کلو سویا میل کے پروٹین کے برابر، بہت سستا۔ صرف بالغ مویشی۔ دانوں کے ساتھ یکساں ملائیں (نشاستہ جراثیم کو نائٹروجن استعمال کرنے میں مدد دیتا ہے)۔ 2–3 ہفتوں میں آہستہ آہستہ شامل کریں۔',
+  },
 
   // =========================================================================
   //  BRAN & FIBER  —  concentrate-level fiber sources (NOT roughages)
@@ -303,6 +375,32 @@ export const INGREDIENTS: Ingredient[] = [
     capReasonUr: 'تیل 14% + لائپیز انزائم — چند ہفتوں میں خراب۔ پاکستانی بازار میں چاول کے چھلکے کی ملاوٹ عام۔ 20% سے زیادہ چکنائی اور مائیکوٹاکسن خطرہ۔',
     notesEn: 'High fat (14%) and phosphorus — cheaper than rice polish. Check for adulteration.',
     notesUr: 'چکنائی اور فاسفورس زیادہ — رائس پولش سے سستی۔ ملاوٹ چیک کریں۔',
+  },
+  {
+    // By-product of besan / dal milling — abundant in Pakistan and very cheap.
+    // Useful as a "filler" fiber but should not dominate the concentrate.
+    key: 'chickpea_husk', category: 'fiber', icon: '🌰',
+    nameEn: 'Chickpea Husk (Channa Chilka)', nameUr: 'کالا چنا کا چھلکا',
+    energyLevel: 'low', proteinLevel: 'low',
+    dm: 90, cp: 9, me: 2.10, tdn: 60, adf: 32, ndf: 55, fat: 1.5, starch: 10,
+    ca: 0.35, p: 0.25, ash: 6, price: 50, maxInclusion: 25,
+    capReasonEn: 'Highly fibrous and energy-poor (only ~2.1 Mcal/kg DM) — over 25% drags concentrate energy below dairy needs. Mill quality varies widely; beware adulteration with dust or broken pieces.',
+    capReasonUr: 'فائبر زیادہ، توانائی کم (صرف ~2.1 Mcal/kg) — 25% سے زیادہ پر کانسنٹریٹ کی توانائی دودھ کی ضرورت سے کم۔ ملوں سے معیار میں فرق، گرد یا ٹوٹے کی ملاوٹ ممکن۔',
+    notesEn: 'Cheap by-product of besan/dal mills — common in Punjab. Good filler, not a primary nutrient source.',
+    notesUr: 'بیسن اور دال ملوں کا سستا ضمنی پروڈکٹ — پنجاب میں عام۔ بھرنے کے لیے، بنیادی غذا نہیں۔',
+  },
+  {
+    // Soyhull NDF is uniquely digestible — closer to forage NDF than to typical
+    // by-product fibre. Often imported alongside SBM shipments.
+    key: 'soybean_hulls', category: 'fiber', icon: '🟩',
+    nameEn: 'Soybean Hulls (Soyabean Chilka)', nameUr: 'سویا بین کا چھلکا',
+    energyLevel: 'med', proteinLevel: 'low',
+    dm: 91, cp: 12, me: 2.30, tdn: 73, adf: 50, ndf: 67, fat: 2, starch: 3,
+    ca: 0.55, p: 0.18, ash: 5, price: 70, maxInclusion: 25,
+    capReasonEn: 'Very high NDF (67%) but unique — the fibre is highly digestible (~73% TDN), behaving more like good forage than ordinary by-product. Still, over 25% lacks the physical fibre length cattle need to chew and produce saliva for rumen buffering.',
+    capReasonUr: 'NDF بہت زیادہ (67%) مگر منفرد — یہ فائبر آسانی سے ہضم ہوتی ہے (~73% TDN)، اچھے چارے کی طرح۔ پھر بھی 25% سے زیادہ پر چبائی والی فائبر کی کمی، رومن میں بفرنگ متاثر۔',
+    notesEn: 'Dairy-friendly digestible fibre — can partially replace forage. Often imported with SBM.',
+    notesUr: 'دودھ کے لیے موزوں ہضم پذیر فائبر — چارے کی جزوی جگہ۔ سویا میل کے ساتھ درآمد ہوتی ہے۔',
   },
 
   // =========================================================================
@@ -378,28 +476,54 @@ export const NUTRITION_DATA: Record<string, Ingredient> = Object.fromEntries(
  * Safe lookup by key — returns the hardcoded default merged with any user
  * overrides persisted in localStorage.  This is the primary lookup function;
  * all calculations and UI should go through here.
+ *
+ * Custom (user-added) ingredients live in a separate localStorage store and
+ * fall through to the built-in lookup. See `lib/customIngredients.ts`.
  */
 export function getIngredient(key: string): Ingredient | undefined {
   const base = NUTRITION_DATA[key];
-  if (!base) return undefined;
+  if (base) {
+    const override = getOverride(key);
+    if (!override) return base;
+    return { ...base, ...override };
+  }
+  // Not a built-in — fall back to the custom store (user-added ingredients).
+  // Overrides also apply to custom ingredients so the editor stays usable.
+  const custom = getCustomIngredient(key);
+  if (!custom) return undefined;
   const override = getOverride(key);
-  if (!override) return base;
-  return { ...base, ...override };
+  return override ? { ...custom, ...override } : custom;
 }
 
-/** Always returns the unmodified hardcoded default (ignores user overrides). */
+/**
+ * Always returns the unmodified default (ignores user overrides). For built-in
+ * ingredients this is the hardcoded record; for custom ingredients the saved
+ * values ARE the default.
+ */
 export function getDefaultIngredient(key: string): Ingredient | undefined {
-  return NUTRITION_DATA[key];
+  return NUTRITION_DATA[key] ?? getCustomIngredient(key);
 }
 
-/** All ingredients in a category. */
+/** All ingredients in a category — built-ins plus user-added customs. */
 export function getIngredientsByCategory(category: IngredientCategory): Ingredient[] {
-  return INGREDIENTS.filter((i) => i.category === category);
+  const builtIn = INGREDIENTS.filter((i) => i.category === category);
+  const custom  = getCustomIngredients().filter((i) => i.category === category);
+  return [...builtIn, ...custom];
+}
+
+/** Convenience: just the keys for a category, in built-ins-then-customs order. */
+export function getCategoryIngredientKeys(category: IngredientCategory): string[] {
+  return getIngredientsByCategory(category).map((i) => i.key);
+}
+
+/** Every ingredient available right now — built-ins followed by user-added customs. */
+export function getAllIngredients(): Ingredient[] {
+  return [...INGREDIENTS, ...getCustomIngredients()];
 }
 
 /** Emoji icon for an ingredient key (with fallback). */
 export function getIngredientIcon(key: string): string {
-  return NUTRITION_DATA[key]?.icon ?? '🌾';
+  return NUTRITION_DATA[key]?.icon ?? getCustomIngredient(key)?.icon ?? '🌾';
 }
 
 // -------------------------------------------------------------------------------

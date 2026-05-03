@@ -233,6 +233,52 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ *  MOBILE / SAFE-AREA UTILITIES
+ *  Honour iPhone notch + home-indicator insets so sticky bars and bottom
+ *  buttons aren't hidden behind hardware UI. Use these via Tailwind:
+ *    pt-safe-top, pb-safe-bottom, px-safe, mb-safe-bottom
+ * ────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .pt-safe-top    { padding-top:    max(env(safe-area-inset-top),    0px); }
+  .pb-safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+  .pl-safe-left   { padding-left:   max(env(safe-area-inset-left),   0px); }
+  .pr-safe-right  { padding-right:  max(env(safe-area-inset-right),  0px); }
+  .px-safe        { padding-left:   max(env(safe-area-inset-left),   0px);
+                    padding-right:  max(env(safe-area-inset-right),  0px); }
+  .mb-safe-bottom { margin-bottom:  max(env(safe-area-inset-bottom), 0px); }
+
+  /* Disable iOS tap highlight ghost */
+  .tap-transparent { -webkit-tap-highlight-color: transparent; }
+}
+
+/* Native-ish behaviour on touch devices */
+@media (max-width: 640px) {
+  /* Avoid the iOS-Safari font-size-zoom on focused <input> by setting min 16px */
+  input, select, textarea { font-size: 16px; }
+
+  /* Slightly thinner scrollbar on mobile */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+}
+
+/* On any device, kill the iOS tap highlight on tappable elements */
+button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparent; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ *  Touch-aware reveal — on hover-capable devices (mouse) the element stays
+ *  invisible until the parent .group is hovered, but on touch-only devices
+ *  it's visible by default (since there's no hover state to trigger it).
+ *  Apply with: class="touch-reveal" instead of "opacity-0 group-hover:opacity-100"
+ * ────────────────────────────────────────────────────────────────────── */
+.touch-reveal {
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+@media (hover: hover) {
+  .touch-reveal { opacity: 0; }
+  .group:hover .touch-reveal { opacity: 1; }
+}
+
 /* Selection styling */
 ::selection {
   @apply bg-emerald-200 text-emerald-900;

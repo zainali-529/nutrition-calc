@@ -57,8 +57,17 @@ function mergeFormulaWithSelection(
   return [...kept, ...additions];
 }
 
-/** Return the category key (e.g. 'energy') that owns this ingredient key. */
+/**
+ * Return the category key (e.g. 'energy') that owns this ingredient key.
+ *
+ * Walks `getIngredient()` first because that handles BOTH built-in entries
+ * AND user-added custom ingredients (which aren't in the static
+ * INGREDIENT_CATEGORIES.x.ingredients lists). Falls back to the static
+ * registry as a defensive second pass.
+ */
 function categoryOf(ingredientKey: string): string | null {
+  const ing = getIngredient(ingredientKey);
+  if (ing) return ing.category;
   for (const [catKey, cat] of Object.entries(INGREDIENT_CATEGORIES)) {
     if (cat.ingredients.includes(ingredientKey)) return catKey;
   }
@@ -251,35 +260,35 @@ export function NutritionCalculator() {
       : '';
 
   return (
-    <div className="min-h-screen relative">
-      {/* Header */}
+    <div className="min-h-screen relative pb-safe-bottom">
+      {/* Header — slim on mobile, full on desktop */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/70 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40"
+        className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 pt-safe-top px-safe"
       >
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🌾</span>
-            <div>
-              <h1 className="font-bold text-xl text-gray-900">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="text-2xl sm:text-3xl flex-shrink-0">🌾</span>
+            <div className="min-w-0">
+              <h1 className="font-bold text-base sm:text-xl text-gray-900 leading-tight truncate">
                 {language === 'en' ? 'Farm Nutrition' : 'فارم غذائیت'}
               </h1>
-              <p className="text-xs text-gray-500">
+              <p className="hidden sm:block text-xs text-gray-500">
                 {language === 'en' ? 'Formula Calculator' : 'فارمولا کیلکولیٹر'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <motion.button
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
               whileTap={{ scale: 0.95 }}
-              className="relative w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 hover:shadow-md transition-all"
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 hover:shadow-md transition-all tap-transparent"
               title={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
               aria-label={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
             >
-              <Bookmark className="w-5 h-5" />
+              <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
             <LanguageSwitch language={language} onChange={setLanguage} />
           </div>
@@ -305,7 +314,7 @@ export function NutritionCalculator() {
       />
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 px-safe">
         {/* Stepper */}
         <Stepper
           currentStep={currentStep}
@@ -322,7 +331,7 @@ export function NutritionCalculator() {
           steps (after a state mutation like removing an ingredient) can leave
           the panel blank because exit/enter handshakes get out of sync.
         */}
-        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+        <div className="bg-white rounded-xl sm:rounded-lg shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -345,6 +354,8 @@ export function NutritionCalculator() {
                 <Step2Ingredients
                   language={language}
                   chosenIngredients={chosenIngredients}
+                  selectedAnimal={selectedAnimal}
+                  selectedStage={selectedStage}
                   onIngredientToggle={handleIngredientToggle}
                   onNext={handleNextStep}
                   onBack={handleBackStep}
