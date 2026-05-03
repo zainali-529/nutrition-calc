@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, Layers } from 'lucide-react';
+import Link from 'next/link';
 import { Stepper } from './Stepper';
 import { LanguageSwitch } from './LanguageSwitch';
 import { Step1Animal } from './Step1Animal';
@@ -94,6 +95,12 @@ export function NutritionCalculator() {
   // Step 3 State
   const [formula, setFormula] = useState<FormulaItem[]>([]);
 
+  // Transient flag: when the user enters Step 3 with a freshly-built formula
+  // (not a back-navigation, not a loaded save), we auto-run the Balanced LP
+  // so they see a sensible starting recipe instead of the even-10kg-each
+  // distribution. Step 3 consumes this flag once and tells us to clear it.
+  const [autoBalanceOnMount, setAutoBalanceOnMount] = useState(false);
+
   // Saved-formulas modal
   const [savedOpen, setSavedOpen] = useState(false);
 
@@ -155,13 +162,19 @@ export function NutritionCalculator() {
     //   • ADD entries for any newly-selected ingredients
     //   • DROP entries the user deselected on Step 2
     // This preserves the user's customizations across Back/Forward navigation.
+    //
+    // On a TRULY-fresh Step 3 entry (no prior formula), set the auto-balance
+    // flag so Step 3 mounts and auto-runs the Balanced LP for a sensible
+    // starting recipe. Returning users with prior kg edits won't be overridden.
     if (currentStep === 1) {
+      const wasEmpty = formula.length === 0;
       setFormula((prev) => mergeFormulaWithSelection(prev, chosenIngredients));
+      if (wasEmpty) setAutoBalanceOnMount(true);
     }
 
     setCompletedSteps((prev) => [...new Set([...prev, currentStep])]);
     setCurrentStep((prev) => Math.min(prev + 1, 4));
-  }, [currentStep, chosenIngredients]);
+  }, [currentStep, chosenIngredients, formula.length]);
 
   const handleBackStep = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -180,6 +193,8 @@ export function NutritionCalculator() {
     setFormula(entry.formula);
     setCompletedSteps([0, 1]);
     setCurrentStep(2);
+    // Loading a saved recipe — don't run Balanced over it.
+    setAutoBalanceOnMount(false);
   }, []);
 
   /**
@@ -238,6 +253,8 @@ export function NutritionCalculator() {
       fat: [],
     });
     setFormula([]);
+    // Re-enable auto-balance for the next session
+    setAutoBalanceOnMount(false);
   }, []);
 
   const handleStepClick = (step: number) => {
@@ -280,6 +297,16 @@ export function NutritionCalculator() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Switch to TMR (full-ration) calculator. Icon-only on mobile, with label on sm+. */}
+            <Link
+              href="/tmr"
+              className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3 rounded-full bg-white border border-gray-200 shadow-sm text-xs sm:text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:border-emerald-300 hover:shadow-md transition-all tap-transparent"
+              title={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر پر جائیں'}
+              aria-label={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر'}
+            >
+              <Layers className="w-4 h-4 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">TMR</span>
+            </Link>
             <motion.button
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
@@ -370,6 +397,8 @@ export function NutritionCalculator() {
                   onFormulaChange={handleFormulaChange}
                   onNext={handleNextStep}
                   onBack={handleBackStep}
+                  autoBalanceOnMount={autoBalanceOnMount}
+                  onAutoBalanceConsumed={() => setAutoBalanceOnMount(false)}
                 />
               )}
               {currentStep === 3 && (

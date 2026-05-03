@@ -44,8 +44,15 @@ import { getIngredient, type Ingredient, type NutrientRange } from './constants'
  *                   producing dairy animals
  *   'max_energy'  — most energy-dense (Mcal ME) within the allowed range —
  *                   for fattening bulls / finishing phase
+ *   'balanced'    — sits as close to the MIDDLE of every nutrient range as
+ *                   possible. Doesn't optimise cost / CP / ME directly;
+ *                   instead minimises the weighted sum of |deviations from
+ *                   range midpoints|, with each deviation scaled by the
+ *                   range width so all nutrients are comparable. The result
+ *                   is a recipe that's robust to ingredient variability —
+ *                   nothing is pinned at a constraint boundary.
  */
-export type OptimisationMode = 'min_cost' | 'max_protein' | 'max_energy';
+export type OptimisationMode = 'min_cost' | 'max_protein' | 'max_energy' | 'balanced';
 
 export interface AutoFormulateInput {
   /** Ingredient keys the user selected in Step 2. */
@@ -216,9 +223,37 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     }
   }
 
+  // ── Balanced-mode auxiliary slack variables ─────────────────────────────
+  //
+  // For each constrained nutrient n, we want the recipe to sit at the MIDDLE
+  // of its target range, not at an edge. We linearise this by introducing a
+  // non-negative slack `bal_abs_<nutrient>` that absorbs the deviation from
+  // the range midpoint.  The objective `bal_obj` is the sum of all slacks,
+  // weighted by 1/range_width so a 1-pp CP swing matters as much as a small
+  // ME swing.
+  //
+  //   For each ingredient i and nutrient n with midpoint M, width W:
+  //     coef_dev_n,i  =  dm_i × (val_i − M) / W
+  //
+  //   Two ≤-constraints per nutrient:
+  //     bal_<n>_pos:   SUM_i(coef_dev_n,i × x_i)  −  bal_abs_<n>  ≤  0
+  //     bal_<n>_neg:  −SUM_i(coef_dev_n,i × x_i)  −  bal_abs_<n>  ≤  0
+  //
+  //   Together, this forces  bal_abs_<n> ≥ |dev_n|,  and minimising
+  //   `bal_obj = Σ bal_abs_<n>` pulls every nutrient toward its midpoint.
+  // ────────────────────────────────────────────────────────────────────────
+  const mode = input.mode ?? 'min_cost';
+  if (mode === 'balanced') {
+    for (const c of CONSTRAINED) {
+      constraints[`bal_${c.key}_pos`] = { max: 0 };
+      constraints[`bal_${c.key}_neg`] = { max: 0 };
+    }
+  }
+
   // Build each variable's coefficient row. We always track `cost`, `cp_total`,
   // and `me_total` as named objectives so the solver can optimise any one of
-  // them based on the selected mode.
+  // them based on the selected mode. For 'balanced', we also add `bal_obj`
+  // and the per-nutrient pos/neg slack-bound coefficients.
   for (const ing of ingredients) {
     const dm = ing.dm / 100;
     const coef: Record<string, number> = {
@@ -226,6 +261,7 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
       cost:      ing.price ?? 0,              // Rs — for min_cost mode
       cp_total:  dm * (ing.cp ?? 0),          // kg CP contribution — for max_protein mode
       me_total:  dm * (ing.me ?? 0),          // Mcal ME contribution — for max_energy mode
+      bal_obj:   0,                           // ingredients don't contribute directly to bal_obj
     };
 
     // For every nutrient constraint, the coefficient is dm × (value − bound).
@@ -235,6 +271,15 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
       const bound = input.ranges[c.rangeKey];
       coef[`${c.key}_min`] = dm * (value - bound.min);
       coef[`${c.key}_max`] = dm * (value - bound.max);
+
+      // Balanced-mode deviation coefficient (range-width-weighted)
+      if (mode === 'balanced') {
+        const mid   = (bound.min + bound.max) / 2;
+        const width = bound.max - bound.min || 1;  // guard against zero-width ranges
+        const devCoef = dm * (value - mid) / width;
+        coef[`bal_${c.key}_pos`] =  devCoef;
+        coef[`bal_${c.key}_neg`] = -devCoef;
+      }
     }
 
     // Map this ingredient's own cap-constraint: coefficient 1
@@ -249,11 +294,22 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     variables[ing.key] = coef;
   }
 
+  // Add balanced-mode slack variables (one per constrained nutrient)
+  if (mode === 'balanced') {
+    for (const c of CONSTRAINED) {
+      variables[`bal_abs_${c.key}`] = {
+        bal_obj:                1,   // each slack contributes 1 to total deviation objective
+        [`bal_${c.key}_pos`]:  -1,   // bounds positive deviation
+        [`bal_${c.key}_neg`]:  -1,   // bounds negative deviation
+      };
+    }
+  }
+
   // Pick the objective based on the mode
-  const mode = input.mode ?? 'min_cost';
   const [optimizeField, opType] =
     mode === 'max_protein' ? ['cp_total', 'max'] as const
   : mode === 'max_energy'  ? ['me_total', 'max'] as const
+  : mode === 'balanced'    ? ['bal_obj',  'min'] as const
   :                          ['cost',     'min'] as const;
 
   const model = {

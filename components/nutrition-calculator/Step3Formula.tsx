@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Sparkles, AlertTriangle, Lock, Unlock, Coins, Beef, Zap } from 'lucide-react';
+import { Pencil, Sparkles, AlertTriangle, Lock, Unlock, Coins, Beef, Zap, Target } from 'lucide-react';
 import { FormulaItem, calculateNutrients, calculateTotalCost, calculateTotalWeight } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,10 @@ interface Step3FormulaProps {
   onFormulaChange: (formula: FormulaItem[]) => void;
   onNext: () => void;
   onBack: () => void;
+  /** When true on mount, Step 3 auto-runs the Balanced LP once for a sensible
+   *  starting recipe. The parent flips this to false via `onAutoBalanceConsumed`. */
+  autoBalanceOnMount?: boolean;
+  onAutoBalanceConsumed?: () => void;
 }
 
 function NutrientBadge({
@@ -68,6 +72,8 @@ export function Step3Formula({
   onFormulaChange,
   onNext,
   onBack,
+  autoBalanceOnMount = false,
+  onAutoBalanceConsumed,
 }: Step3FormulaProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [overrideVer, setOverrideVer] = useState(0);
@@ -226,6 +232,22 @@ export function Step3Formula({
     onFormulaChange(updated);
   };
 
+  // ── Auto-run Balanced on first mount when the parent has flagged this as
+  // a fresh Step 3 entry. The ref guard ensures we only fire once per mount,
+  // even if React re-renders the effect mid-flight; the parent immediately
+  // clears the flag via onAutoBalanceConsumed so subsequent navigation back
+  // to Step 3 won't re-fire.
+  const didAutoBalance = useRef(false);
+  useEffect(() => {
+    if (!autoBalanceOnMount || didAutoBalance.current) return;
+    didAutoBalance.current = true;
+    handleAutoFormulate('balanced');
+    onAutoBalanceConsumed?.();
+    // handleAutoFormulate is intentionally excluded — capturing it as a dep
+    // would re-fire on every render. The ref guard above is the real safety.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoBalanceOnMount]);
+
   const t = {
     formulaEditor: language === 'en' ? 'Formula Editor' : 'فارمولا ایڈیٹر',
     weight: language === 'en' ? 'Weight (kg)' : 'وزن (کلو)',
@@ -337,12 +359,16 @@ export function Step3Formula({
           </div>
         </div>
 
-        {/* 3 optimisation mode buttons — each triggers a different LP objective */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        {/* 4 optimisation mode buttons — each triggers a different LP objective.
+            Balanced doesn't optimise cost / CP / ME — it pulls every nutrient
+            toward the MIDDLE of its target range, making the recipe robust to
+            small ingredient variation. */}
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([
-            { mode: 'min_cost',    icon: <Coins className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',      tipEn: 'Minimise cost',        tipUr: 'کم قیمت' },
-            { mode: 'max_protein', icon: <Beef  className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین', tipEn: 'Richest in CP (kg)',  tipUr: 'زیادہ پروٹین' },
-            { mode: 'max_energy',  icon: <Zap   className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی', tipEn: 'Highest ME (Mcal)',   tipUr: 'زیادہ توانائی' },
+            { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',          tipEn: 'Minimise cost',                       tipUr: 'کم قیمت' },
+            { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'ہر غذائی جزو کو حد کے درمیان رکھیں' },
+            { mode: 'max_protein', icon: <Beef   className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین',   tipEn: 'Richest in CP (kg)',                  tipUr: 'زیادہ پروٹین' },
+            { mode: 'max_energy',  icon: <Zap    className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی',  tipEn: 'Highest ME (Mcal)',                   tipUr: 'زیادہ توانائی' },
           ] as const).map((m) => {
             const busy = afBusyMode === m.mode;
             const anyBusy = afBusyMode !== null;
