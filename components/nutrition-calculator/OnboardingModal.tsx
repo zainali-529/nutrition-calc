@@ -39,7 +39,7 @@ export function markOnboardingSeen(): void {
  */
 export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalProps) {
   const t = {
-    title:    language === 'en' ? 'Welcome to Farm Nutrition' : 'فارم غذائیت میں خوش آمدید',
+    title:    language === 'en' ? 'Welcome to RumiCalc' : 'رومی کیلک (RumiCalc) میں خوش آمدید',
     subtitle: language === 'en'
       ? 'Build a healthy, low-cost feed mix for your cow, buffalo, or goat — in 5 quick steps.'
       : 'اپنی گائے، بھینس یا بکری کے لیے صحت مند اور سستا فارمولا بنائیں — صرف 5 آسان مراحل میں۔',
@@ -93,7 +93,7 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
           >
             <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-600 px-6 py-6 sm:py-8 text-white flex-shrink-0">
+              <div className="relative bg-gradient-to-br from-emerald-600 via-emerald-700 to-[#0e3b5e] px-6 py-6 sm:py-8 text-white flex-shrink-0">
                 <button
                   onClick={onClose}
                   className="absolute top-3 right-3 p-2 rounded-lg hover:bg-white/20 transition-colors tap-transparent"
@@ -101,10 +101,14 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <span className="text-4xl sm:text-5xl">🌾</span>
+                <div className="flex items-center gap-3.5 sm:gap-4">
+                  <img
+                    src="/rumicalc-logo.png"
+                    alt="RumiCalc Logo"
+                    className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-2xl bg-white p-1.5 shadow-lg flex-shrink-0"
+                  />
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold leading-tight">{t.title}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold leading-tight tracking-tight">{t.title}</h2>
                     <p className="text-sm sm:text-base text-emerald-50/95 mt-1 leading-snug">{t.subtitle}</p>
                   </div>
                 </div>

@@ -62,16 +62,16 @@ function IngredientCard({
   return (
     <motion.div
       whileHover={{ y: -3 }}
-      className={`relative p-3 sm:p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center cursor-pointer group tap-transparent ${
+      className={`relative p-3 sm:p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center cursor-pointer group tap-transparent ${
         isSelected
-          ? 'border-emerald-500 bg-emerald-50 shadow-md'
-          : 'border-gray-200 bg-white hover:border-emerald-300'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-md ring-1 ring-[#558b2f]/50'
+          : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40'
       }`}
     >
       <motion.button
         onClick={(e) => { e.stopPropagation(); onInfo(); }}
         whileTap={{ scale: 0.92 }}
-        className="absolute top-2 right-2 p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full shadow-md touch-reveal tap-transparent"
+        className="absolute top-2 right-2 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full shadow-xs touch-reveal tap-transparent"
         title="View details"
         aria-label="View details"
       >
@@ -84,15 +84,15 @@ function IngredientCard({
         className="w-full flex flex-col items-center gap-2"
       >
         <span className="text-3xl">{icon}</span>
-        <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-emerald-900' : 'text-gray-900'}`}>
+        <span className={`text-sm font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
           {name}
         </span>
         <div className="flex gap-1 mt-1 flex-wrap justify-center">
-          <span className={`text-xs font-medium px-2 py-1 rounded border ${intensity(energyLevel)}`}>E</span>
-          <span className={`text-xs font-medium px-2 py-1 rounded border ${intensity(proteinLevel)}`}>P</span>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${intensity(energyLevel)}`}>E</span>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${intensity(proteinLevel)}`}>P</span>
         </div>
         {isSelected && (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-emerald-600 font-bold text-lg">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[#558b2f] font-extrabold text-lg">
             ✓
           </motion.div>
         )}
@@ -420,13 +420,13 @@ export function TmrStep2Ingredients({
 
         {/* Action buttons */}
         <div className="flex gap-3 pt-6 sm:pt-8">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
+          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
             {t.back}
           </Button>
           <Button
             onClick={onNext}
             disabled={selectedForages.length === 0 && selectedConcentrates.length === 0}
-            className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
+            className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent disabled:opacity-50"
           >
             {t.next}
           </Button>
@@ -450,15 +450,15 @@ function TabButton({
       onClick={onClick}
       className={`relative flex-1 px-3 py-3 sm:py-2.5 text-sm font-bold transition-all border-b-2 -mb-0.5 tap-transparent ${
         active
-          ? 'text-emerald-700 border-emerald-600'
-          : 'text-gray-500 border-transparent hover:text-emerald-600'
+          ? 'text-[#0e3b5e] border-[#558b2f]'
+          : 'text-slate-500 border-transparent hover:text-[#0e3b5e]'
       }`}
     >
       <span className="mr-1.5">{icon}</span>
       {label}
       {count > 0 && (
         <span className={`ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
-          active ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'
+          active ? 'bg-[#558b2f] text-white' : 'bg-slate-200 text-slate-700'
         }`}>
           {count}
         </span>

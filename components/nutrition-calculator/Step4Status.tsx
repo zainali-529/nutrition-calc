@@ -111,13 +111,13 @@ export function Step4Status({
         </div>
         {ranges && (
           <span
-            className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
-              allGood ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 border ${
+              allGood ? 'bg-[#558b2f]/10 text-[#4d7c0f] border-[#558b2f]/30' : 'bg-amber-100 text-amber-900 border-amber-300'
             }`}
           >
             {allGood
-              ? <><CheckCircle2 className="w-3.5 h-3.5" />{language === 'en' ? 'All targets met' : 'تمام اہداف پورے'}</>
-              : <><AlertTriangle className="w-3.5 h-3.5" />{onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}</>}
+              ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#558b2f]" />{language === 'en' ? 'All targets met' : 'تمام اہداف پورے'}</>
+              : <><AlertTriangle className="w-3.5 h-3.5 text-amber-700" />{onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}</>}
           </span>
         )}
       </div>
@@ -134,9 +134,9 @@ export function Step4Status({
       {/* Actionable advice only. When everything passes this is a single line
           instead of seven rows repeating what the cards already said. */}
       {allGood ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <p className="text-[13px] font-medium text-emerald-900">
+        <div className="flex items-center gap-2.5 rounded-xl border border-[#558b2f]/30 bg-[#f4f8ee] px-3.5 py-3">
+          <CheckCircle2 className="w-4 h-4 text-[#558b2f] flex-shrink-0" />
+          <p className="text-[13px] font-bold text-[#0e3b5e]">
             {language === 'en'
               ? 'Every nutrient is within its target range — this formula is ready to feed.'
               : 'تمام غذائی اجزاء اپنے ہدف کے اندر ہیں — یہ فارمولا تیار ہے۔'}
@@ -180,10 +180,10 @@ export function Step4Status({
 
       {/* Action Buttons — taller tap targets on mobile */}
       <div className="flex gap-3 pt-2 sm:pt-4">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
+        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
           {t.back}
         </Button>
-        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
+        <Button onClick={onNext} className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent">
           {t.next}
         </Button>
       </div>

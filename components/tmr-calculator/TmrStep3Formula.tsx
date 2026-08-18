@@ -286,33 +286,31 @@ export function TmrStep3Formula({
         </div>
 
         {/* Auto-Formulate panel */}
-        <div className="bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-violet-200 rounded-xl p-4">
+        <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-2xl p-4 sm:p-5 shadow-xs">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-[#0e3b5e]/20">
               <Sparkles className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-sm font-bold text-violet-900">{t.autoTitle}</h4>
+                <h4 className="text-sm font-extrabold text-[#0e3b5e]">{t.autoTitle}</h4>
                 {(() => {
                   const lockCount = formula.filter((f) => f.locked).length;
                   if (lockCount === 0) return null;
                   return (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                      <Lock className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      <Lock className="w-3 h-3 text-amber-700" />
                       {lockCount} {language === 'en' ? 'locked' : 'مقفل'}
                     </span>
                   );
                 })()}
               </div>
-              <p className="text-[11px] text-violet-700/80 leading-relaxed">{t.autoSubtitle}</p>
+              <p className="text-[11px] text-[#0e3b5e]/80 leading-relaxed font-medium">{t.autoSubtitle}</p>
             </div>
           </div>
 
-          {/* 4 LP-objective buttons. Balanced doesn't optimise cost / CP / ME —
-              it pulls every nutrient to the MIDDLE of its range, giving a recipe
-              that's robust to small ingredient variation. */}
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* 4 LP-objective buttons */}
+          <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {([
               { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, en: 'Cheapest',    ur: 'سستا' },
               { mode: 'balanced',    icon: <Target className="w-4 h-4" />, en: 'Balanced',    ur: 'متوازن' },
@@ -327,15 +325,15 @@ export function TmrStep3Formula({
                   whileTap={!anyBusy ? { scale: 0.97 } : undefined}
                   disabled={anyBusy}
                   onClick={() => handleAutoFormulate(m.mode)}
-                  className={`inline-flex flex-col items-center justify-center gap-1 text-[11px] font-bold px-2 py-2.5 rounded-lg transition-all disabled:cursor-not-allowed tap-transparent ${
+                  className={`inline-flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold px-2.5 py-3 rounded-xl transition-all disabled:cursor-not-allowed tap-transparent ${
                     busy
-                      ? 'bg-gradient-to-br from-violet-700 to-fuchsia-700 text-white shadow-lg ring-2 ring-violet-300'
+                      ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-lg ring-2 ring-[#0e3b5e]/30'
                       : anyBusy
                         ? 'bg-slate-100 text-slate-400'
-                        : 'bg-white text-violet-700 border-2 border-violet-300 hover:bg-gradient-to-br hover:from-violet-600 hover:to-fuchsia-600 hover:text-white hover:border-transparent shadow-sm'
+                        : 'bg-white text-[#0e3b5e] border border-slate-200 hover:border-[#558b2f] hover:bg-[#f4f8ee] shadow-xs'
                   }`}
                 >
-                  {busy ? <Sparkles className="w-4 h-4 animate-pulse" /> : m.icon}
+                  {busy ? <Sparkles className="w-4 h-4 animate-pulse text-amber-300" /> : m.icon}
                   <span className="leading-tight text-center">
                     {busy ? (language === 'en' ? 'Optimising…' : 'حساب…') : (language === 'en' ? m.en : m.ur)}
                   </span>
@@ -350,7 +348,7 @@ export function TmrStep3Formula({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
+                className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <span className="flex-1">{afError}</span>
@@ -412,7 +410,7 @@ export function TmrStep3Formula({
                   ({language === 'en' ? 'edit to scale' : 'سکیل کے لیے ترمیم کریں'})
                 </span>
               </label>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <input
                   type="number"
                   value={totalWeight || 0}
@@ -420,28 +418,28 @@ export function TmrStep3Formula({
                   disabled={totalWeight === 0}
                   min="0"
                   step="10"
-                  className="w-24 px-2 py-1 text-sm font-bold rounded border-2 border-emerald-200 bg-white text-emerald-900 focus:border-emerald-500 outline-none"
+                  className="w-24 px-2.5 py-1 text-sm font-extrabold rounded-lg border-2 border-slate-300 bg-white text-[#0e3b5e] focus:border-[#558b2f] focus:ring-2 focus:ring-[#558b2f] outline-none"
                 />
-                <span className="text-sm font-semibold text-emerald-900">kg</span>
+                <span className="text-sm font-bold text-[#0e3b5e]">kg</span>
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">{t.totalCost}</label>
-              <p className="text-base sm:text-lg font-bold text-emerald-900">Rs {totalCost.toFixed(0)}</p>
+              <label className="text-xs text-slate-600 block mb-1 font-medium">{t.totalCost}</label>
+              <p className="text-base sm:text-lg font-extrabold text-[#0e3b5e]">Rs {totalCost.toFixed(0)}</p>
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">{t.perKg}</label>
-              <p className="text-base sm:text-lg font-bold text-emerald-900">Rs {nutrients.perKgPrice}/kg</p>
+              <label className="text-xs text-slate-600 block mb-1 font-medium">{t.perKg}</label>
+              <p className="text-base sm:text-lg font-extrabold text-[#0e3b5e]">Rs {nutrients.perKgPrice}/kg</p>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-6 sm:pt-8">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
+          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
             {t.back}
           </Button>
-          <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
+          <Button onClick={onNext} className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent">
             {t.next}
           </Button>
         </div>

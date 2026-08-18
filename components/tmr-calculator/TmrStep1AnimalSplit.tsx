@@ -203,10 +203,10 @@ function ForageSplitSlider({
             key={preset}
             type="button"
             onClick={() => onChange(preset)}
-            className={`text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all tap-transparent ${
+            className={`text-[11px] px-2.5 py-1 rounded-full border font-bold transition-all tap-transparent ${
               forageDmPct === preset
-                ? 'bg-violet-600 text-white border-violet-700'
-                : 'bg-white text-violet-700 border-violet-200 hover:border-violet-400'
+                ? 'bg-[#0e3b5e] text-white border-[#0e3b5e] shadow-xs'
+                : 'bg-white text-[#0e3b5e] border-slate-200 hover:border-[#558b2f] hover:bg-[#f4f8ee]'
             }`}
           >
             {preset}% {language === 'en' ? 'forage' : 'چارہ'}
@@ -250,14 +250,14 @@ export function TmrStep1AnimalSplit({
       className="space-y-6 sm:space-y-8"
     >
       {/* TMR-vs-Concentrate banner */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex items-start gap-3">
+      <div className="bg-[#f4f8ee] border border-[#558b2f]/30 rounded-xl px-4 py-3 flex items-start gap-3 shadow-xs">
         <span className="text-xl flex-shrink-0 leading-tight">🥗</span>
-        <p className="text-xs text-emerald-900 leading-relaxed">{t.tmrBanner}</p>
+        <p className="text-xs text-[#0e3b5e] leading-relaxed font-medium">{t.tmrBanner}</p>
       </div>
 
       {/* Animal selection */}
       <div>
-        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-extrabold text-[#0e3b5e] mb-4 flex items-center gap-2">
           <span className="text-2xl">🐄</span>
           {t.selectAnimal}
         </h3>
@@ -277,21 +277,21 @@ export function TmrStep1AnimalSplit({
       {/* Stage selection */}
       {selectedAnimal && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-extrabold text-[#0e3b5e] mb-4 flex items-center gap-2">
             <span className="text-2xl">📅</span>
             {t.selectStage}
           </h3>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2.5">
             {stageLabels.map((stage, idx) => (
               <motion.button
                 key={idx}
                 onClick={() => onStageSelect(idx)}
                 whileTap={{ scale: 0.98 }}
                 whileHover={{ x: 4 }}
-                className={`min-h-[48px] px-4 py-3 rounded-lg border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
+                className={`min-h-[48px] px-4 py-3 rounded-xl border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
                   selectedStage === idx
-                    ? 'border-violet-500 bg-violet-50 text-violet-900'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-violet-300'
+                    ? 'border-[#0e3b5e] bg-[#0e3b5e]/5 text-[#0e3b5e] font-bold shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-[#0e3b5e]/40'
                 }`}
               >
                 {stage}
@@ -314,7 +314,7 @@ export function TmrStep1AnimalSplit({
         <Button
           onClick={onNext}
           disabled={!isComplete}
-          className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
+          className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent"
         >
           {t.next}
         </Button>

@@ -303,28 +303,28 @@ export function Step3Formula({
       </div>
 
       {/* Auto-Formulate — least-cost LP solver */}
-      <div className="bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-violet-200 rounded-xl p-4">
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-2xl p-4 sm:p-5 shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-[#0e3b5e]/20">
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-bold text-violet-900">
+              <h4 className="text-sm font-extrabold text-[#0e3b5e]">
                 {language === 'en' ? 'Auto-Formulate' : 'خودکار فارمولا'}
               </h4>
               {(() => {
                 const lockCount = formula.filter((f) => f.locked).length;
                 if (lockCount === 0) return null;
                 return (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                    <Lock className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    <Lock className="w-3 h-3 text-amber-700" />
                     {lockCount} {language === 'en' ? 'locked' : 'مقفل'}
                   </span>
                 );
               })()}
             </div>
-            <p className="text-[11px] text-violet-700/80 leading-relaxed">
+            <p className="text-[11px] text-[#0e3b5e]/80 leading-relaxed font-medium">
               {afMode
                 ? (language === 'en'
                     ? <>Showing the <strong>{MODE_LABEL[afMode].en}</strong> recipe. Tap another to compare.</>
@@ -340,11 +340,8 @@ export function Step3Formula({
           </div>
         </div>
 
-        {/* 4 optimisation mode buttons — each triggers a different LP objective.
-            Balanced doesn't optimise cost / CP / ME — it pulls every nutrient
-            toward the MIDDLE of its target range, making the recipe robust to
-            small ingredient variation. */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* 4 optimisation mode buttons */}
+        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([
             { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',          tipEn: 'Minimise cost',                       tipUr: 'کم قیمت' },
             { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'ہر غذائی جزو کو حد کے درمیان رکھیں' },
@@ -353,9 +350,6 @@ export function Step3Formula({
           ] as const).map((m) => {
             const busy = afBusyMode === m.mode;
             const anyBusy = afBusyMode !== null;
-            // `afMode` is the mode that produced the numbers currently on screen.
-            // Without this the user taps Balanced, the kg values change, and
-            // nothing on the panel says which mode they're looking at.
             const active = afMode === m.mode && !anyBusy;
             return (
               <motion.button
@@ -366,22 +360,22 @@ export function Step3Formula({
                 onClick={() => handleAutoFormulate(m.mode)}
                 title={language === 'en' ? m.tipEn : m.tipUr}
                 aria-pressed={active}
-                className={`relative inline-flex flex-col items-center justify-center gap-1 text-[11px] font-bold px-2 py-2.5 rounded-xl transition-all disabled:cursor-not-allowed ${
+                className={`relative inline-flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold px-2.5 py-3 rounded-xl transition-all disabled:cursor-not-allowed ${
                   busy
-                    ? 'bg-violet-700 text-white shadow-lg ring-2 ring-violet-300'
+                    ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-lg ring-2 ring-[#0e3b5e]/30'
                     : active
-                      ? 'bg-violet-600 text-white shadow-md ring-2 ring-violet-300'
+                      ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-md ring-2 ring-[#0e3b5e]/40'
                       : anyBusy
                         ? 'bg-white/60 text-slate-400 border border-slate-200'
-                        : 'bg-white text-violet-700 border border-violet-200 hover:border-violet-400 hover:bg-violet-50 shadow-sm'
+                        : 'bg-white text-[#0e3b5e] border border-slate-200 hover:border-[#558b2f] hover:bg-[#f4f8ee] shadow-xs'
                 }`}
               >
                 {active && (
-                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white text-violet-700 flex items-center justify-center shadow-sm">
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-[#0e3b5e] flex items-center justify-center shadow-xs">
                     <Check className="w-3 h-3" strokeWidth={3} />
                   </span>
                 )}
-                {busy ? <Sparkles className="w-4 h-4 animate-pulse" /> : m.icon}
+                {busy ? <Sparkles className="w-4 h-4 animate-pulse text-amber-300" /> : m.icon}
                 <span className="leading-tight text-center">
                   {busy
                     ? (language === 'en' ? 'Optimising…' : 'حساب…')
@@ -397,7 +391,7 @@ export function Step3Formula({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
+              className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
               <span className="flex-1">{afError}</span>
@@ -545,16 +539,16 @@ export function Step3Formula({
       </div>
 
       {/* Summary */}
-      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg p-4 border border-emerald-200 space-y-3">
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 rounded-2xl p-4 sm:p-5 border-2 border-[#0e3b5e]/20 space-y-3 shadow-xs">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-gray-600 block mb-1">
+            <label className="text-xs text-slate-600 block mb-1 font-medium">
               {t.total} Weight
-              <span className="ml-1 text-[10px] text-emerald-600 font-medium">
+              <span className="ml-1 text-[10px] text-[#558b2f] font-bold">
                 ({language === 'en' ? 'edit to scale' : 'سکیل کے لیے ترمیم کریں'})
               </span>
             </label>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <input
                 type="number"
                 value={totalWeight || 0}
@@ -562,30 +556,30 @@ export function Step3Formula({
                 disabled={totalWeight === 0}
                 min="0"
                 step="10"
-                className="w-24 text-2xl font-bold text-emerald-700 bg-white/60 border border-emerald-200 rounded-md px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 disabled:opacity-50"
+                className="w-24 text-2xl font-extrabold text-[#0e3b5e] bg-white/80 border border-slate-300 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] disabled:opacity-50 shadow-xs"
               />
-              <span className="text-lg font-bold text-emerald-700">kg</span>
+              <span className="text-lg font-bold text-[#0e3b5e]">kg</span>
             </div>
-            <p className="text-xs text-emerald-600 mt-1">as-fed</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-gray-600">{t.total} DM</p>
-            <p className="text-2xl font-bold text-emerald-700">{nutrients.totalDM.toFixed(2)} kg</p>
-            <p className="text-xs text-emerald-600 mt-1">{nutrients.dm}% of as-fed</p>
+            <p className="text-xs text-slate-600 font-medium">{t.total} DM</p>
+            <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">{nutrients.totalDM.toFixed(2)} kg</p>
+            <p className="text-xs text-[#558b2f] mt-1 font-bold">{nutrients.dm}% of as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-gray-600">{t.total} Cost</p>
-            <p className="text-2xl font-bold text-emerald-700">₨{totalCost.toLocaleString('en-PK')}</p>
-            <p className="text-xs text-emerald-600 mt-1">
-              {t.costPerKg}: ₨{nutrients.perKgPrice}
+            <p className="text-xs text-slate-600 font-medium">{t.total} Cost</p>
+            <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">₨{totalCost.toLocaleString('en-PK')}</p>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">
+              {t.costPerKg}: <span className="text-[#0e3b5e] font-bold">₨{nutrients.perKgPrice}</span>
             </p>
           </div>
         </div>
 
         {/* Quick batch-size presets — clicking scales the whole formula */}
         {totalWeight > 0 && (
-          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-emerald-200/60">
-            <span className="text-[11px] font-semibold text-emerald-800">
+          <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-slate-200/80">
+            <span className="text-[11px] font-bold text-[#0e3b5e]">
               {language === 'en' ? 'Scale to batch:' : 'بیچ سائز:'}
             </span>
             {QUICK_BATCH_SIZES.map((s) => {
@@ -594,10 +588,10 @@ export function Step3Formula({
                 <button
                   key={s}
                   onClick={() => handleTotalWeightChange(s)}
-                  className={`text-xs font-semibold px-3 py-1 rounded-full transition-colors ${
+                  className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-white/70 text-emerald-700 hover:bg-white border border-emerald-300'
+                      ? 'bg-[#0e3b5e] text-white shadow-sm'
+                      : 'bg-white/80 text-[#0e3b5e] hover:bg-white border border-[#0e3b5e]/20 hover:border-[#558b2f]'
                   }`}
                 >
                   {s} kg
@@ -610,10 +604,10 @@ export function Step3Formula({
 
       {/* Action Buttons — taller tap targets on mobile */}
       <div className="flex gap-3 pt-6 sm:pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
+        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
           {t.back}
         </Button>
-        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
+        <Button onClick={onNext} className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent">
           {t.next}
         </Button>
       </div>

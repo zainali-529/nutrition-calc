@@ -97,9 +97,9 @@ export function NutrientCard({
   const status = range ? getNutrientStatus(value, range.min, range.max) : null;
 
   const tone = {
-    success: { border: 'border-emerald-200', dot: 'bg-emerald-500', value: 'text-emerald-700', band: 'bg-emerald-200', mark: 'bg-emerald-600' },
-    warning: { border: 'border-amber-200',   dot: 'bg-amber-500',   value: 'text-amber-700',   band: 'bg-amber-200',   mark: 'bg-amber-600' },
-    error:   { border: 'border-rose-200',    dot: 'bg-rose-500',    value: 'text-rose-700',    band: 'bg-rose-200',    mark: 'bg-rose-600' },
+    success: { border: 'border-[#558b2f]/30', dot: 'bg-[#558b2f]', value: 'text-[#4d7c0f]', band: 'bg-[#558b2f]/20', mark: 'bg-[#558b2f]' },
+    warning: { border: 'border-amber-300',   dot: 'bg-amber-500',   value: 'text-amber-700',   band: 'bg-amber-200',   mark: 'bg-amber-600' },
+    error:   { border: 'border-rose-300',    dot: 'bg-rose-500',    value: 'text-rose-700',    band: 'bg-rose-200',    mark: 'bg-rose-600' },
   }[status ?? 'success'];
 
   // Marker position. The view window is the target band plus 60% of its width
@@ -218,8 +218,8 @@ export function NutrientGrid({
           </h3>
           {ranges && (
             <span
-              className={`text-[11px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
-                allGood ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
+              className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full tabular-nums border ${
+                allGood ? 'bg-[#558b2f]/10 text-[#4d7c0f] border-[#558b2f]/30' : 'bg-[#0e3b5e]/10 text-[#0e3b5e] border-[#0e3b5e]/20'
               }`}
             >
               {onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}

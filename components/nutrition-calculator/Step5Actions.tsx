@@ -46,14 +46,14 @@ function PrimaryAction({
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
       disabled={loading || done}
-      className={`w-full rounded-xl px-4 py-3.5 flex items-center gap-3 text-left transition-colors tap-transparent disabled:cursor-default ${
+      className={`w-full rounded-xl px-4 py-3.5 flex items-center gap-3 text-left transition-all tap-transparent disabled:cursor-default ${
         done
-          ? 'bg-emerald-50 border border-emerald-300 text-emerald-800'
-          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+          ? 'bg-[#f4f8ee] border border-[#558b2f]/40 text-[#4d7c0f]'
+          : 'bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white shadow-md shadow-[#0e3b5e]/20'
       }`}
     >
       <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-        done ? 'bg-emerald-600 text-white' : 'bg-white/20'
+        done ? 'bg-[#558b2f] text-white' : 'bg-white/20'
       }`}>
         {loading ? <Loader2 className="w-4 h-4 animate-spin" />
           : done ? <Check className="w-4 h-4" strokeWidth={3} />
@@ -61,7 +61,7 @@ function PrimaryAction({
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-bold leading-tight">{label}</span>
-        <span className={`block text-[11px] ${done ? 'text-emerald-700' : 'text-emerald-50/90'}`}>{hint}</span>
+        <span className={`block text-[11px] ${done ? 'text-[#4d7c0f]' : 'text-emerald-50/90'}`}>{hint}</span>
       </span>
     </motion.button>
   );
@@ -82,11 +82,11 @@ function SecondaryAction({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       disabled={loading}
-      className="rounded-xl border border-slate-200 bg-white px-2.5 py-3 sm:px-3 text-left hover:border-emerald-400 hover:shadow-sm transition-all tap-transparent disabled:opacity-60"
+      className="rounded-xl border border-slate-200 bg-white px-2.5 py-3 sm:px-3 text-left hover:border-[#558b2f] hover:bg-[#f4f8ee]/40 hover:shadow-sm transition-all tap-transparent disabled:opacity-60 group"
     >
-      <span className="flex items-center gap-1.5 text-emerald-700">
+      <span className="flex items-center gap-1.5 text-[#0e3b5e] group-hover:text-[#558b2f] transition-colors">
         {loading ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" /> : icon}
-        <span className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate">{label}</span>
+        <span className="text-[12px] sm:text-[13px] font-bold leading-tight truncate">{label}</span>
       </span>
       {/* Hint is desktop-only: three columns at 390px can't fit a sentence each,
           and the icon + label already say what the button does. */}

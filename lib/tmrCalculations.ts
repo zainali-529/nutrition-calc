@@ -213,8 +213,8 @@ export function exportTmrAsText(
   language: 'en' | 'ur' = 'en',
 ): string {
   const header = language === 'ur'
-    ? 'TMR فارمولا Report\n' + '='.repeat(40) + '\n'
-    : 'TMR Formula Report\n' + '='.repeat(40) + '\n';
+    ? '🥗 رومی کیلک (RumiCalc) — TMR فارمولا رپورٹ\n' + '='.repeat(40) + '\n'
+    : '🥗 RumiCalc — TMR Formula Report\n' + '='.repeat(40) + '\n';
 
   const forageItems   = formula.filter((f) => isForage(f.key));
   const concItems     = formula.filter((f) => !isForage(f.key));

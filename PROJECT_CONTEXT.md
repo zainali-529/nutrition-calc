@@ -1,4 +1,4 @@
-# Nutrition Calculator — Project Context
+# RumiCalc — Project Context
 
 A bilingual (English / Urdu) web app that builds **least-cost livestock feed formulas** for Pakistani farms — dairy cows, buffaloes, heifers, fattening bulls, dairy goats, and fattening goats. Real Linear Programming finds the cheapest mix that meets NRC-grade nutrient targets.
 

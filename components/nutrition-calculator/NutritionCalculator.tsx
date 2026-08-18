@@ -324,15 +324,24 @@ export function NutritionCalculator() {
       >
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <span className="text-2xl sm:text-3xl flex-shrink-0">🌾</span>
-            <div className="min-w-0">
-              <h1 className="font-bold text-base sm:text-xl text-gray-900 leading-tight truncate">
-                {language === 'en' ? 'Farm Nutrition' : 'فارم غذائیت'}
-              </h1>
-              <p className="hidden sm:block text-xs text-gray-500">
-                {language === 'en' ? 'Formula Calculator' : 'فارمولا کیلکولیٹر'}
-              </p>
-            </div>
+            <Link href="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0 group">
+              <img
+                src="/rumicalc-logo.png"
+                alt="RumiCalc Logo"
+                className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
+              />
+              <div className="min-w-0">
+                <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
+                  <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
+                  <span className="text-[10px] sm:text-xs font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/20 px-2 py-0.5 rounded-full hidden sm:inline">
+                    {language === 'en' ? 'Concentrate' : 'ونڈہ'}
+                  </span>
+                </h1>
+                <p className="hidden sm:block text-[11px] font-semibold text-slate-500 truncate">
+                  {language === 'en' ? 'Livestock Feed & Wanda Calculator' : 'مویشیوں کے ونڈہ کا سمارٹ فارمولا'}
+                </p>
+              </div>
+            </Link>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Help — opens the bilingual nutrient glossary */}
@@ -340,7 +349,7 @@ export function NutritionCalculator() {
               onClick={() => setGlossaryOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
               whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 transition-all tap-transparent"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 transition-all tap-transparent"
               title={language === 'en' ? 'What do these mean?' : 'ان کا کیا مطلب ہے؟'}
               aria-label={language === 'en' ? 'Glossary' : 'لغت'}
             >
@@ -350,18 +359,18 @@ export function NutritionCalculator() {
             {/* Switch to TMR (full-ration) calculator. Icon-only on mobile, with label on sm+. */}
             <Link
               href="/tmr"
-              className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3 rounded-full bg-white border border-gray-200 shadow-sm text-xs sm:text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:border-emerald-300 hover:shadow-md transition-all tap-transparent"
+              className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3.5 rounded-full bg-white border border-slate-200 shadow-xs text-xs sm:text-sm font-bold text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 hover:shadow-sm transition-all tap-transparent"
               title={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر پر جائیں'}
               aria-label={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر'}
             >
-              <Layers className="w-4 h-4 sm:w-4 sm:h-4" />
+              <Layers className="w-4 h-4 sm:w-4 sm:h-4 text-[#558b2f]" />
               <span className="hidden sm:inline">TMR</span>
             </Link>
             <motion.button
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
               whileTap={{ scale: 0.95 }}
-              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 hover:shadow-md transition-all tap-transparent"
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 hover:shadow-sm transition-all tap-transparent"
               title={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
               aria-label={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
             >

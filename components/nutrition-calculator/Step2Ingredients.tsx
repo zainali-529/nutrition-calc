@@ -181,14 +181,14 @@ function IngredientCard({
       whileHover={{ y: -4 }}
       animate={showRecommended ? { scale: [1, 1.015, 1] } : { scale: 1 }}
       transition={showRecommended ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
-      className={`relative rounded-xl border-2 transition-all flex flex-col items-center text-center cursor-pointer group ${
+      className={`relative rounded-2xl border-2 transition-all flex flex-col items-center text-center cursor-pointer group ${
         isSelected
-          ? 'border-emerald-500 bg-emerald-50 shadow-md ring-1 ring-emerald-300'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-md ring-1 ring-[#558b2f]/50'
           : showRecommended
-            ? 'border-emerald-400 bg-gradient-to-b from-emerald-50 to-white shadow-lg ring-2 ring-emerald-200'
+            ? 'border-[#558b2f] bg-gradient-to-b from-[#f4f8ee] to-white shadow-lg ring-2 ring-[#558b2f]/30'
             : isCustom
               ? 'border-purple-200 bg-purple-50/40 hover:border-purple-400'
-              : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
+              : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40 hover:shadow-sm'
       }`}
     >
       {/* Top-right action buttons. `touch-reveal` keeps them visible on touch
@@ -232,7 +232,7 @@ function IngredientCard({
         <motion.span
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-md whitespace-nowrap"
+          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#558b2f] text-white shadow-md whitespace-nowrap"
         >
           <Sparkles className="w-2.5 h-2.5" />
           {language === 'en' ? 'ADD THIS' : 'یہ شامل کریں'}
@@ -247,7 +247,7 @@ function IngredientCard({
       >
         <span className="text-3xl leading-none">{getIngredientIcon(id)}</span>
 
-        <span className={`text-[13px] font-semibold leading-tight ${isSelected ? 'text-emerald-900' : 'text-gray-900'}`}>
+        <span className={`text-[13px] font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
           {name}
         </span>
 
@@ -268,7 +268,7 @@ function IngredientCard({
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="mt-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold"
+            className="mt-0.5 w-5 h-5 rounded-full bg-[#558b2f] text-white flex items-center justify-center text-xs font-bold"
           >
             ✓
           </motion.div>
@@ -1132,13 +1132,13 @@ export function Step2Ingredients({
 
         {/* Action Buttons — taller tap targets on mobile (min 48 px) */}
         <div className="flex gap-3 pt-4 sm:pt-6">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
+          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
             {t.back}
           </Button>
           <Button
             onClick={handleNext}
             disabled={!canProceed}
-            className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
+            className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent disabled:opacity-50"
           >
             {t.next}
           </Button>

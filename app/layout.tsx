@@ -8,14 +8,14 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Farm Nutrition Calculator | چارے کا فارمولا',
-  description: 'Professional livestock nutrition formula calculator for dairy farmers',
+  title: 'RumiCalc | Livestock Ration & TMR Calculator | رومی کیلک',
+  description: 'RumiCalc - Professional livestock feed and Total Mixed Ration (TMR) formula calculator for dairy cows, buffaloes, bulls, and goats.',
   generator: 'v0.app',
-  applicationName: 'Farm Nutrition',
+  applicationName: 'RumiCalc',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Farm Nutrition',
+    title: 'RumiCalc',
   },
   formatDetection: {
     telephone: false,
@@ -23,19 +23,15 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
+        url: '/rumicalc-logo.png',
+        type: 'image/png',
       },
       {
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/rumicalc-logo.png',
   },
 }
 

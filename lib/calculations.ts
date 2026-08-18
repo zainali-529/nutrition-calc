@@ -423,8 +423,8 @@ export function generateRecommendations(
 /** Plain-text export for WhatsApp / clipboard sharing. */
 export function exportFormulaAsText(formula: FormulaItem[], language: 'en' | 'ur' = 'en'): string {
   const header = language === 'ur'
-    ? 'فارمولا Report\n' + '='.repeat(40) + '\n'
-    : 'Formula Report\n' + '='.repeat(40) + '\n';
+    ? '🌾 رومی کیلک (RumiCalc) — فارمولا رپورٹ\n' + '='.repeat(40) + '\n'
+    : '🌾 RumiCalc — Livestock Formula Report\n' + '='.repeat(40) + '\n';
 
   const items = formula.map((f) => `• ${f.name}: ${f.kg.toFixed(1)} kg`).join('\n');
 
@@ -463,7 +463,7 @@ export function generatePDFContent(
   const n = calculateNutrients(formula);
 
   return `
-NUTRITION CALCULATOR - FORMULA REPORT
+RUMICALC - LIVESTOCK FORMULA REPORT
 Animal: ${animal}
 Stage:  ${stage}
 Date:   ${new Date().toLocaleDateString()}

@@ -377,13 +377,13 @@ export function CalculationBreakdownModal({
         >
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] pb-safe-bottom sm:pb-0">
             {/* Header */}
-            <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-200 flex-shrink-0">
+            <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-200 flex-shrink-0 bg-slate-50/50">
               <div className="flex items-start gap-2.5 min-w-0">
-                <span className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#0e3b5e]/20">
                   <FlaskConical className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{t.title}</h2>
+                  <h2 className="text-base sm:text-lg font-extrabold text-[#0e3b5e] leading-tight">{t.title}</h2>
                   <p className="text-[11px] sm:text-xs text-slate-500">{t.subtitle}</p>
                 </div>
               </div>
@@ -563,7 +563,7 @@ export function CalculationBreakdownModal({
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   onClick={handlePrint}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 text-[13px] font-bold transition-colors tap-transparent"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white px-3.5 py-2 text-[13px] font-bold transition-all shadow-sm shadow-[#0e3b5e]/20 tap-transparent"
                 >
                   <Printer className="w-4 h-4" />
                   {t.print}
