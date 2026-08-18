@@ -757,12 +757,12 @@ export const STAGES = {
 } as const;
 
 export const ANIMALS = [
-  { id: 'dairy_cow',      icon: '🐄', labelEn: 'Dairy Cow',      labelUr: 'دودھ والی گائے' },
-  { id: 'dairy_buffalo',  icon: '🐃', labelEn: 'Dairy Buffalo',  labelUr: 'دودھ والی بھینس' },
-  { id: 'heifer',         icon: '🐄', labelEn: 'Heifer (Cow/Buffalo)', labelUr: 'بچھڑی (گائے/بھینس)' },
-  { id: 'fattening_bull', icon: '🐂', labelEn: 'Fattening Bull', labelUr: 'موٹا کرنے والا بیل' },
-  { id: 'dairy_goat',     icon: '🐐', labelEn: 'Dairy Goat',     labelUr: 'دودھ والی بکری' },
-  { id: 'fattening_goat', icon: '🐐', labelEn: 'Fattening Goat', labelUr: 'موٹا کرنے والی بکری' },
+  { id: 'dairy_cow',      icon: '🐄', image: '/images/animals/dairy_cow.jpg',      labelEn: 'Dairy Cow',           labelUr: 'دودھ والی گائے' },
+  { id: 'dairy_buffalo',  icon: '🐃', image: '/images/animals/dairy_buffalo.jpg',  labelEn: 'Dairy Buffalo',       labelUr: 'دودھ والی بھینس' },
+  { id: 'heifer',         icon: '🐄', image: '/images/animals/heifer.jpg',         labelEn: 'Heifer (Cow/Buffalo)', labelUr: 'بچھڑی (گائے/بھینس)' },
+  { id: 'fattening_bull', icon: '🐂', image: '/images/animals/fattening_bull.jpg', labelEn: 'Fattening Bull',      labelUr: 'موٹا کرنے والا بیل' },
+  { id: 'dairy_goat',     icon: '🐐', image: '/images/animals/dairy_goat.jpg',     labelEn: 'Dairy Goat',          labelUr: 'دودھ والی بکری' },
+  { id: 'fattening_goat', icon: '🐐', image: '/images/animals/fattening_goat.jpg', labelEn: 'Fattening Goat',      labelUr: 'موٹا کرنے والی بکری' },
 ];
 
 // ================================================================================

@@ -71,7 +71,7 @@ function WholeDietTargetCard({ language, range }: { language: 'en' | 'ur'; range
 function AnimalCard({
   animal, selected, language, onSelect,
 }: {
-  animal: { id: string; icon: string; labelEn: string; labelUr: string };
+  animal: { id: string; icon: string; image?: string; labelEn: string; labelUr: string };
   selected: boolean;
   language: 'en' | 'ur';
   onSelect: () => void;
@@ -81,21 +81,31 @@ function AnimalCard({
       onClick={onSelect}
       whileTap={{ scale: 0.97 }}
       whileHover={{ y: -3 }}
-      className={`relative overflow-hidden rounded-xl border-2 transition-all p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] tap-transparent ${
+      className={`relative overflow-hidden rounded-2xl border-2 transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center gap-2.5 min-h-[135px] group tap-transparent ${
         selected
-          ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-200'
-          : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-lg shadow-[#558b2f]/20 ring-1 ring-[#558b2f]'
+          : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40 hover:shadow-md'
       }`}
     >
-      <span className="text-5xl leading-none">{animal.icon}</span>
-      <span className={`text-xs font-semibold text-center leading-tight ${selected ? 'text-emerald-900' : 'text-gray-800'}`}>
+      {animal.image ? (
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+          <img
+            src={animal.image}
+            alt={animal.labelEn}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <span className="text-5xl leading-none">{animal.icon}</span>
+      )}
+      <span className={`text-xs font-bold text-center leading-tight ${selected ? 'text-[#0e3b5e]' : 'text-slate-800'}`}>
         {animal[language === 'en' ? 'labelEn' : 'labelUr']}
       </span>
       {selected && (
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
-          className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow"
+          className="absolute top-2.5 right-2.5 w-6 h-6 bg-[#558b2f] text-white rounded-full flex items-center justify-center text-xs font-extrabold shadow-sm z-10"
         >
           ✓
         </motion.div>
