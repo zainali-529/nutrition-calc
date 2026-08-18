@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { INGREDIENT_CATEGORIES, getCategoryIngredientKeys } from '@/lib/constants';
+import { CATEGORY_KEYS, INGREDIENT_CATEGORIES, getCategoryIngredientKeys } from '@/lib/constants';
 import {
   FORAGES,
   getAnyIngredient,
@@ -240,7 +240,9 @@ const FORAGE_SUBCATS: { key: ForageSubcategory; en: string; ur: string }[] = [
   { key: 'dry',    en: 'Hay & Straw',           ur: 'گھاس اور بھوسہ'},
 ];
 
-const CONC_CATS = ['energy', 'protein', 'fiber', 'fat'] as const;
+// Concentrate-side sections shown under the "Concentrate" tab. Sourced from
+// CATEGORY_KEYS so a new concentrate category appears here automatically.
+const CONC_CATS = CATEGORY_KEYS;
 
 export function TmrStep2Ingredients({
   language,

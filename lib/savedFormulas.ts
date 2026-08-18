@@ -7,7 +7,7 @@
 // ================================================================================
 
 import type { FormulaItem } from './calculations';
-import { ANIMALS, INGREDIENT_CATEGORIES } from './constants';
+import { ANIMALS, categoryOfIngredient, emptyChosenIngredients } from './constants';
 
 const STORAGE_KEY = 'saved_formulas';
 
@@ -76,23 +76,52 @@ function reverseAnimalId(label: string): string | null {
 
 /**
  * Reconstruct chosenIngredients from a formula's keys if the saved entry
- * doesn't have them (old schema).
+ * doesn't have them (old schema). Resolves through `categoryOfIngredient` so
+ * user-added custom ingredients bucket correctly too.
  */
 function reconstructChosenIngredients(
   formula: FormulaItem[]
 ): Record<string, string[]> {
-  const chosen: Record<string, string[]> = { energy: [], protein: [], fiber: [], fat: [] };
+  const chosen = emptyChosenIngredients();
   for (const item of formula) {
-    for (const [catKey, cat] of Object.entries(INGREDIENT_CATEGORIES)) {
-      if (cat.ingredients.includes(item.key)) {
-        if (!chosen[catKey].includes(item.key)) {
-          chosen[catKey].push(item.key);
-        }
-        break;
-      }
-    }
+    const cat = categoryOfIngredient(item.key);
+    if (cat && !chosen[cat].includes(item.key)) chosen[cat].push(item.key);
   }
   return chosen;
+}
+
+/**
+ * Re-bucket a stored `chosenIngredients` map against the CURRENT category of
+ * each ingredient, and guarantee every category bucket exists.
+ *
+ * This is what makes the fat/supplement split backward-compatible. Formulas
+ * saved before the split filed limestone, DCP, salt and soda under `fat`;
+ * those keys now report `category: 'supplement'`. Without this migration such
+ * a save would load with the minerals present in the formula but showing as
+ * UNSELECTED in Step 2's Supplements section — and going Back to Step 2 would
+ * then silently drop them.
+ *
+ * A key whose category can't be resolved (deleted custom ingredient, renamed
+ * built-in) is left in whichever bucket it was stored under rather than being
+ * discarded, so nothing vanishes from an old save.
+ */
+function migrateChosenIngredients(
+  stored: Record<string, unknown>
+): Record<string, string[]> {
+  const migrated = emptyChosenIngredients();
+
+  for (const [storedCat, keys] of Object.entries(stored)) {
+    if (!Array.isArray(keys)) continue;
+    for (const key of keys) {
+      if (typeof key !== 'string') continue;
+      const target = categoryOfIngredient(key) ?? storedCat;
+      // Unknown/legacy bucket names get their own entry so data isn't lost.
+      if (!migrated[target]) migrated[target] = [];
+      if (!migrated[target].includes(key)) migrated[target].push(key);
+    }
+  }
+
+  return migrated;
 }
 
 /**
@@ -107,11 +136,13 @@ function normalise(raw: any): SavedFormula {
   const animalId = raw?.animalId ?? reverseAnimalId(raw?.animal ?? raw?.animalLabel ?? '') ?? null;
 
   // --- chosenIngredients: prefer new field, reconstruct from formula if missing ---
+  // Either path is then re-bucketed against current categories, so saves made
+  // before the fat/supplement split resolve to the right Step 2 sections.
   const hasChosenIngredients =
     raw?.chosenIngredients &&
     Object.values(raw.chosenIngredients).some((arr: any) => Array.isArray(arr) && arr.length > 0);
   const chosenIngredients = hasChosenIngredients
-    ? raw.chosenIngredients
+    ? migrateChosenIngredients(raw.chosenIngredients)
     : reconstructChosenIngredients(formula);
 
   return {

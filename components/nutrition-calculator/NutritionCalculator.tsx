@@ -16,7 +16,13 @@ import { NutritionConflictModal, detectConflicts, type NutritionConflict } from 
 import { OnboardingModal, hasSeenOnboarding, markOnboardingSeen } from './OnboardingModal';
 import { GlossaryModal } from './GlossaryModal';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
-import { getIngredient, INGREDIENT_CATEGORIES, STAGES } from '@/lib/constants';
+import {
+  CATEGORY_KEYS,
+  categoryOfIngredient,
+  emptyChosenIngredients,
+  getIngredient,
+  STAGES,
+} from '@/lib/constants';
 import { saveOverride, type IngredientOverride } from '@/lib/ingredientOverrides';
 import type { SavedFormula } from '@/lib/savedFormulas';
 import type { QuickStartTemplate } from '@/lib/templates';
@@ -30,12 +36,9 @@ function mergeFormulaWithSelection(
   existing: FormulaItem[],
   chosen: Record<string, string[]>
 ): FormulaItem[] {
-  const selectedKeys = new Set<string>([
-    ...(chosen.energy  || []),
-    ...(chosen.protein || []),
-    ...(chosen.fiber   || []),
-    ...(chosen.fat     || []),
-  ]);
+  const selectedKeys = new Set<string>(
+    CATEGORY_KEYS.flatMap((cat) => chosen[cat] || [])
+  );
 
   // If we have nothing yet (first time entering Step 3), build from scratch.
   if (existing.length === 0) return buildFormula(chosen);
@@ -61,23 +64,6 @@ function mergeFormulaWithSelection(
   return [...kept, ...additions];
 }
 
-/**
- * Return the category key (e.g. 'energy') that owns this ingredient key.
- *
- * Walks `getIngredient()` first because that handles BOTH built-in entries
- * AND user-added custom ingredients (which aren't in the static
- * INGREDIENT_CATEGORIES.x.ingredients lists). Falls back to the static
- * registry as a defensive second pass.
- */
-function categoryOf(ingredientKey: string): string | null {
-  const ing = getIngredient(ingredientKey);
-  if (ing) return ing.category;
-  for (const [catKey, cat] of Object.entries(INGREDIENT_CATEGORIES)) {
-    if (cat.ingredients.includes(ingredientKey)) return catKey;
-  }
-  return null;
-}
-
 export function NutritionCalculator() {
   const [language, setLanguage] = useState<'en' | 'ur'>('en');
   const [currentStep, setCurrentStep] = useState(0);
@@ -87,13 +73,10 @@ export function NutritionCalculator() {
   const [selectedAnimal, setSelectedAnimal] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState(0);
 
-  // Step 2 State
-  const [chosenIngredients, setChosenIngredients] = useState<Record<string, string[]>>({
-    energy: [],
-    protein: [],
-    fiber: [],
-    fat: [],
-  });
+  // Step 2 State — one bucket per ingredient category
+  const [chosenIngredients, setChosenIngredients] = useState<Record<string, string[]>>(
+    emptyChosenIngredients
+  );
 
   // Step 3 State
   const [formula, setFormula] = useState<FormulaItem[]>([]);
@@ -160,7 +143,7 @@ export function NutritionCalculator() {
         setChosenIngredients((sel) => {
           const next = { ...sel };
           for (const removed of removedKeys) {
-            const cat = categoryOf(removed);
+            const cat = categoryOfIngredient(removed);
             if (cat && next[cat]) {
               next[cat] = next[cat].filter((k) => k !== removed);
             }
@@ -201,11 +184,13 @@ export function NutritionCalculator() {
   const applyLoadedFormula = useCallback((entry: SavedFormula) => {
     setSelectedAnimal(entry.animalId);
     setSelectedStage(entry.stageIndex);
+    // `entry.chosenIngredients` has already been normalised + re-bucketed by
+    // savedFormulas.normalise(), so old saves that filed minerals under 'fat'
+    // arrive here with them under 'supplement'. Merge over an empty map so
+    // every bucket is guaranteed present.
     setChosenIngredients({
-      energy:  entry.chosenIngredients.energy  ?? [],
-      protein: entry.chosenIngredients.protein ?? [],
-      fiber:   entry.chosenIngredients.fiber   ?? [],
-      fat:     entry.chosenIngredients.fat     ?? [],
+      ...emptyChosenIngredients(),
+      ...entry.chosenIngredients,
     });
     setFormula(entry.formula);
     setCompletedSteps([0, 1]);
@@ -263,12 +248,7 @@ export function NutritionCalculator() {
     setCompletedSteps([]);
     setSelectedAnimal(null);
     setSelectedStage(0);
-    setChosenIngredients({
-      energy: [],
-      protein: [],
-      fiber: [],
-      fat: [],
-    });
+    setChosenIngredients(emptyChosenIngredients());
     setFormula([]);
     // Re-enable auto-balance for the next session
     setAutoBalanceOnMount(false);
@@ -282,21 +262,12 @@ export function NutritionCalculator() {
    * template only specifies WHICH ingredients, not quantities).
    */
   const handleUseTemplate = useCallback((template: QuickStartTemplate) => {
+    const picks = { ...emptyChosenIngredients(), ...template.chosenIngredients };
     setSelectedAnimal(template.animalId);
     setSelectedStage(template.stageIndex);
-    setChosenIngredients({
-      energy:  template.chosenIngredients.energy,
-      protein: template.chosenIngredients.protein,
-      fiber:   template.chosenIngredients.fiber,
-      fat:     template.chosenIngredients.fat,
-    });
+    setChosenIngredients(picks);
     // Build initial even-distribution formula; Balanced LP will overwrite it
-    setFormula(buildFormula({
-      energy:  template.chosenIngredients.energy,
-      protein: template.chosenIngredients.protein,
-      fiber:   template.chosenIngredients.fiber,
-      fat:     template.chosenIngredients.fat,
-    }));
+    setFormula(buildFormula(picks));
     setCompletedSteps([0, 1]);
     setCurrentStep(2);
     // Run Balanced LP on Step 3 mount to populate proper kg values

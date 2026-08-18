@@ -11,11 +11,16 @@ import {
 import { isCustomIngredient, removeCustomIngredient } from '@/lib/customIngredients';
 import { Button } from '@/components/ui/button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Info, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Info, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { IngredientDetailModal } from './IngredientDetailModal';
 import { AddIngredientModal } from './AddIngredientModal';
-import { autoFormulate, type InfeasibilityAnalysis, type NutrientGap } from '@/lib/autoFormulate';
+import {
+  autoFormulate,
+  type IngredientFix,
+  type InfeasibilityAnalysis,
+  type NutrientGap,
+} from '@/lib/autoFormulate';
 
 interface Step2IngredientsProps {
   language: 'en' | 'ur';
@@ -61,15 +66,84 @@ const NUTRIENT_INFO: Record<
   phosphorus: { en: 'Phosphorus', ur: 'فاسفورس', unit: '%',         raise: { en: 'add DCP or wheat bran',             ur: 'DCP یا چوکر شامل کریں'        }, lower: { en: 'reduce wheat bran or DCP',           ur: 'چوکر یا DCP کم کریں'       } },
 };
 
+/**
+ * How generously an ingredient can be used, derived from its `maxInclusion`.
+ *
+ * This is the single most useful safety signal we can put on a card: a farmer
+ * scanning the grid needs to know at a glance that wheat bran can make up a
+ * third of the mix while salt must stay under 1%. Deriving it from the existing
+ * cap means it can never drift out of sync with the LP's actual constraint.
+ */
+function usageTier(maxInclusion: number) {
+  if (maxInclusion >= 25) {
+    return {
+      key: 'free' as const,
+      en: 'Use freely', ur: 'کھل کر استعمال',
+      chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      icon: '👍',
+    };
+  }
+  if (maxInclusion >= 5) {
+    return {
+      key: 'medium' as const,
+      en: 'Medium amount', ur: 'درمیانی مقدار',
+      chip: 'bg-amber-50 text-amber-800 border-amber-200',
+      icon: '⚖️',
+    };
+  }
+  return {
+    key: 'small' as const,
+    en: 'Small amount only', ur: 'تھوڑی مقدار',
+    chip: 'bg-rose-50 text-rose-700 border-rose-200',
+    icon: '⚠️',
+  };
+}
+
+/** Compact labelled pill for the energy / protein intensity levels. */
+function LevelPill({
+  icon, label, level, language,
+}: {
+  icon: string;
+  label: string;
+  level: string;
+  language: 'en' | 'ur';
+}) {
+  const styles: Record<string, string> = {
+    high: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    med:  'bg-slate-100  text-slate-700  border-slate-300',
+    low:  'bg-slate-50   text-slate-500  border-slate-200',
+  };
+  const word: Record<string, { en: string; ur: string }> = {
+    high: { en: 'High', ur: 'زیادہ' },
+    med:  { en: 'Med',  ur: 'درمیانی' },
+    low:  { en: 'Low',  ur: 'کم' },
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${styles[level] ?? styles.med}`}
+      title={`${label}: ${word[level]?.en ?? level}`}
+    >
+      <span aria-hidden>{icon}</span>
+      {word[level]?.[language === 'en' ? 'en' : 'ur'] ?? level}
+    </span>
+  );
+}
+
 interface IngredientCardProps {
   id: string;
   name: string;
-  icon: string;
+  language: 'en' | 'ur';
   energyLevel: string;
   proteinLevel: string;
+  maxInclusion: number;
   isSelected: boolean;
   /** True if this is a user-added (custom) ingredient — gets a "Custom" pill + delete control. */
   isCustom?: boolean;
+  /**
+   * True when the solver says adding THIS ingredient fixes the current
+   * selection. Gets a prominent emerald treatment so the eye lands on it.
+   */
+  isRecommended?: boolean;
   onSelect: () => void;
   onInfo: () => void;
   /** Only invoked for custom ingredients (the parent passes this only when isCustom is true). */
@@ -79,38 +153,41 @@ interface IngredientCardProps {
 function IngredientCard({
   id,
   name,
-  icon,
+  language,
   energyLevel,
   proteinLevel,
+  maxInclusion,
   isSelected,
   isCustom = false,
+  isRecommended = false,
   onSelect,
   onInfo,
   onDelete,
 }: IngredientCardProps) {
-  const getIntensityColor = (level: string) => {
-    const colors: Record<string, string> = {
-      high: 'bg-red-100 text-red-700 border-red-300',
-      med: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-      low: 'bg-green-100 text-green-700 border-green-300',
-    };
-    return colors[level] || colors.med;
-  };
+  const tier = usageTier(maxInclusion);
+
+  // Selected wins over recommended — once it's in, the ring shouldn't keep
+  // shouting "add me". Recommended only styles UNselected cards.
+  const showRecommended = isRecommended && !isSelected;
 
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className={`relative p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 text-center cursor-pointer group ${
+      animate={showRecommended ? { scale: [1, 1.015, 1] } : { scale: 1 }}
+      transition={showRecommended ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
+      className={`relative rounded-xl border-2 transition-all flex flex-col items-center text-center cursor-pointer group ${
         isSelected
-          ? 'border-emerald-500 bg-emerald-50 shadow-md'
-          : isCustom
-            ? 'border-purple-200 bg-purple-50/40 hover:border-purple-400'
-            : 'border-gray-200 bg-white hover:border-emerald-300'
+          ? 'border-emerald-500 bg-emerald-50 shadow-md ring-1 ring-emerald-300'
+          : showRecommended
+            ? 'border-emerald-400 bg-gradient-to-b from-emerald-50 to-white shadow-lg ring-2 ring-emerald-200'
+            : isCustom
+              ? 'border-purple-200 bg-purple-50/40 hover:border-purple-400'
+              : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
       }`}
     >
       {/* Top-right action buttons. `touch-reveal` keeps them visible on touch
           devices but lets them fade in on hover for mouse users. */}
-      <div className="absolute top-2 right-2 flex gap-1 touch-reveal">
+      <div className="absolute top-1.5 right-1.5 z-10 flex gap-1 touch-reveal">
         {isCustom && onDelete && (
           <motion.button
             onClick={(e) => {
@@ -118,11 +195,11 @@ function IngredientCard({
               onDelete();
             }}
             whileTap={{ scale: 0.92 }}
-            className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md tap-transparent"
+            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md tap-transparent"
             title="Delete custom ingredient"
             aria-label="Delete custom ingredient"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </motion.button>
         )}
         <motion.button
@@ -131,47 +208,61 @@ function IngredientCard({
             onInfo();
           }}
           whileTap={{ scale: 0.92 }}
-          className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full shadow-md tap-transparent"
+          className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full shadow-md tap-transparent"
           title="View details"
           aria-label="View details"
         >
-          <Info className="w-4 h-4" />
+          <Info className="w-3.5 h-3.5" />
         </motion.button>
       </div>
 
-      {/* "Custom" pill — sits in the top-left so it doesn't overlap action buttons */}
+      {/* Corner ribbons — "Custom" (author) and "Recommended" (solver) */}
       {isCustom && (
-        <span className="absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
-          Custom
+        <span className="absolute top-1.5 left-1.5 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+          {language === 'en' ? 'Custom' : 'اپنا'}
         </span>
       )}
+      {showRecommended && !isCustom && (
+        <motion.span
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-md whitespace-nowrap"
+        >
+          <Sparkles className="w-2.5 h-2.5" />
+          {language === 'en' ? 'ADD THIS' : 'یہ شامل کریں'}
+        </motion.span>
+      )}
 
-      {/* Main Card Content */}
+      {/* Main tap target */}
       <motion.button
         onClick={onSelect}
-        whileTap={{ scale: 0.98 }}
-        className="w-full flex flex-col items-center gap-2 mt-2"
+        whileTap={{ scale: 0.97 }}
+        className="w-full flex flex-col items-center gap-1.5 px-2 pt-5 pb-3 tap-transparent"
       >
-        <span className="text-3xl">{getIngredientIcon(id)}</span>
-        <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-900' : 'text-gray-900'}`}>
+        <span className="text-3xl leading-none">{getIngredientIcon(id)}</span>
+
+        <span className={`text-[13px] font-semibold leading-tight ${isSelected ? 'text-emerald-900' : 'text-gray-900'}`}>
           {name}
         </span>
 
-        {/* Quality Badges */}
-        <div className="flex gap-1 mt-2 flex-wrap justify-center">
-          <span className={`text-xs font-medium px-2 py-1 rounded border ${getIntensityColor(energyLevel)}`}>
-            E
-          </span>
-          <span className={`text-xs font-medium px-2 py-1 rounded border ${getIntensityColor(proteinLevel)}`}>
-            P
-          </span>
+        {/* Energy / protein strength */}
+        <div className="flex gap-1 flex-wrap justify-center">
+          <LevelPill icon="⚡" label="Energy"  level={energyLevel}  language={language} />
+          <LevelPill icon="🥩" label="Protein" level={proteinLevel} language={language} />
         </div>
+
+        {/* How much may be used — the safety signal */}
+        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${tier.chip}`}>
+          <span aria-hidden>{tier.icon}</span>
+          {language === 'en' ? tier.en : tier.ur}
+          <span className="opacity-60">≤{maxInclusion}%</span>
+        </span>
 
         {isSelected && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="mt-2 text-emerald-600 font-bold text-lg"
+            className="mt-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold"
           >
             ✓
           </motion.div>
@@ -182,55 +273,82 @@ function IngredientCard({
 }
 
 function IngredientGroup({
-  categoryKey,
   title,
   language,
   ingredients,
   selected,
   minRequired,
+  recommendedKeys,
   onToggle,
   onIngredientInfo,
   onIngredientDelete,
 }: {
-  categoryKey: string;
   title: string;
   language: 'en' | 'ur';
   ingredients: string[];
   selected: string[];
   minRequired: number;
+  /** Keys the solver says would fix the current selection — get the ADD THIS treatment. */
+  recommendedKeys: Set<string>;
   onToggle: (ingredient: string) => void;
   onIngredientInfo: (ingredientKey: string) => void;
   /** Invoked when the user clicks the trash icon on a custom-ingredient card. */
   onIngredientDelete: (ingredientKey: string) => void;
 }) {
   const isValid = selected.length >= minRequired;
-  const status =
-    selected.length === 0
-      ? 'Need at least ' + minRequired
-      : selected.length >= minRequired
-        ? '✓ Valid'
-        : 'Need ' + (minRequired - selected.length) + ' more';
+  const needed = Math.max(0, minRequired - selected.length);
+
+  // Plain-language section status. "Need at least 1" told the user nothing about
+  // whether they'd done it; this states the requirement AND the current count.
+  const status = (() => {
+    if (minRequired === 0) {
+      return selected.length > 0
+        ? (language === 'en' ? `${selected.length} chosen` : `${selected.length} منتخب`)
+        : (language === 'en' ? 'Optional' : 'اختیاری');
+    }
+    if (isValid) {
+      return language === 'en' ? `✓ ${selected.length} chosen` : `✓ ${selected.length} منتخب`;
+    }
+    return language === 'en'
+      ? `Pick ${needed} more`
+      : `${needed} اور منتخب کریں`;
+  })();
+
+  const statusStyle = minRequired === 0
+    ? (selected.length > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')
+    : (isValid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800');
+
+  // Count of solver-recommended items sitting in this section, so the user knows
+  // to look here even before scrolling to the highlighted card.
+  const recoHere = ingredients.filter((k) => recommendedKeys.has(k)).length;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
+      className="space-y-3"
     >
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold">{title}</h3>
-        <span
-          className={`text-sm font-semibold px-3 py-1 rounded-full ${
-            isValid
-              ? 'bg-green-100 text-green-700'
-              : 'bg-yellow-100 text-yellow-700'
-          }`}
-        >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          {title}
+          {recoHere > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+              <Sparkles className="w-2.5 h-2.5" />
+              {recoHere} {language === 'en' ? 'suggested' : 'تجویز'}
+            </span>
+          )}
+        </h3>
+        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyle}`}>
           {status}
+          {minRequired > 0 && !isValid && (
+            <span className="ml-1 font-normal opacity-70">
+              ({language === 'en' ? `min ${minRequired}` : `کم از کم ${minRequired}`})
+            </span>
+          )}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
         {ingredients.map((ingredientKey) => {
           const data = getIngredient(ingredientKey);
           if (!data) return null;
@@ -241,11 +359,13 @@ function IngredientGroup({
               key={ingredientKey}
               id={ingredientKey}
               name={data[language === 'en' ? 'nameEn' : 'nameUr']}
-              icon=""
+              language={language}
               energyLevel={data.energyLevel}
               proteinLevel={data.proteinLevel}
+              maxInclusion={data.maxInclusion}
               isSelected={selected.includes(ingredientKey)}
               isCustom={custom}
+              isRecommended={recommendedKeys.has(ingredientKey)}
               onSelect={() => onToggle(ingredientKey)}
               onInfo={() => onIngredientInfo(ingredientKey)}
               onDelete={custom ? () => onIngredientDelete(ingredientKey) : undefined}
@@ -272,51 +392,99 @@ function formatGapTarget(gap: NutrientGap): string {
   return `${op} ${gap.required}${info?.unit ?? ''}`;
 }
 
+/** Plain-language name for each Step 2 section, used in the fix chips. */
+const CATEGORY_LABEL: Record<string, { en: string; ur: string; icon: string }> = {
+  energy:     { en: 'Energy',     ur: 'توانائی',   icon: '🌾' },
+  protein:    { en: 'Protein',    ur: 'پروٹین',    icon: '🫘' },
+  fiber:      { en: 'Fiber',      ur: 'فائبر',      icon: '🟫' },
+  fat:        { en: 'Fat / Oil',  ur: 'چکنائی',     icon: '🛢️' },
+  supplement: { en: 'Mineral',    ur: 'معدنیات',    icon: '💊' },
+};
+
 /**
- * Pick the most actionable single piece of advice given the gaps. Common
- * patterns (protein-high + energy-low) get a tailored message; otherwise we
- * fall back to a generic add/remove recommendation based on the suggestion
- * keys returned by the LP diagnostic.
+ * One tappable "add this ingredient" chip.
+ *
+ * This is the core of the guidance rewrite. Instead of telling the farmer to
+ * "pick an ingredient strong in the nutrient you are missing" — which assumes
+ * they can read a nutrient table — we name the ingredient, show its picture,
+ * say which section it lives in, and let them add it with a single tap.
  */
-function buildQuickFix(
-  analysis: InfeasibilityAnalysis,
-  language: 'en' | 'ur',
-): string {
-  const tooHigh = new Set(analysis.hardBlockers.filter((g) => g.direction === 'too_high').map((g) => g.nutrient));
-  const tooLow  = new Set(analysis.hardBlockers.filter((g) => g.direction === 'too_low').map((g) => g.nutrient));
+function FixChip({
+  fix,
+  language,
+  onAdd,
+}: {
+  fix: IngredientFix;
+  language: 'en' | 'ur';
+  onAdd: () => void;
+}) {
+  const ing = getIngredient(fix.key);
+  if (!ing) return null;
 
-  // Pattern: protein too high + energy too low → recommend swapping
-  if (tooHigh.has('protein') && tooLow.has('energy')) {
-    return language === 'en'
-      ? 'Replace one of your protein sources (like Soybean Meal or Cottonseed Cake) with a high-energy grain such as Corn or Wheat. This pulls protein down and lifts energy at the same time.'
-      : 'اپنے کسی پروٹین کے ذریعے (جیسے سویا میل یا بنولہ کھل) کو دانے (جیسے مکئی یا گندم) سے بدلیں۔ اس سے پروٹین کم اور توانائی زیادہ ہو جائے گی۔';
-  }
+  const cat = CATEGORY_LABEL[fix.category] ?? { en: fix.category, ur: fix.category, icon: '🌾' };
+  const catName = language === 'en' ? cat.en : cat.ur;
+  const solves = fix.kind === 'exact_fix';
 
-  // Pattern: fiber too high + energy too low → swap bran for grain
-  if (tooHigh.has('fiber') && tooLow.has('energy')) {
-    return language === 'en'
-      ? 'Reduce a high-fibre ingredient (like Wheat Bran or Palm Kernel Cake) and add a grain (Corn, Broken Rice, or Wheat). Lower fibre, higher energy.'
-      : 'فائبر والا جزو (جیسے چوکر یا PKC) کم کریں اور دانہ (مکئی، ٹکری چاول، یا گندم) شامل کریں۔ فائبر کم، توانائی زیادہ۔';
-  }
-
-  // Use ingredient suggestions from the LP diagnostic if available.
-  if (analysis.suggestedAdditions.length > 0) {
-    const names = analysis.suggestedAdditions
-      .map((k) => getIngredient(k)?.[language === 'en' ? 'nameEn' : 'nameUr'])
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(language === 'en' ? ', ' : '، ');
-    if (names) {
-      return language === 'en'
-        ? `Try adding: ${names}.`
-        : `یہ اجزاء شامل کر کے دیکھیں: ${names}۔`;
+  // For 'helps' chips, say WHAT it does in the simplest possible terms.
+  const effect = (() => {
+    if (solves) return null;
+    const info = NUTRIENT_INFO[fix.nutrient ?? ''];
+    if (!info) return null;
+    const nutrientName = language === 'en' ? info.en : info.ur;
+    if (fix.direction === 'too_low') {
+      return language === 'en' ? `more ${nutrientName}` : `${nutrientName} بڑھائے`;
     }
-  }
+    return language === 'en' ? `less ${nutrientName}` : `${nutrientName} گھٹائے`;
+  })();
 
-  // Fallback — generic guidance
-  return language === 'en'
-    ? 'Pick an ingredient that is strong in the nutrient you are missing, or remove one that is overloading another nutrient.'
-    : 'جس غذائی جزو کی کمی ہے، اس میں مضبوط جزو شامل کریں؛ یا جو جزو زیادہ ہو رہا ہے، اسے کم کریں۔';
+  return (
+    <motion.button
+      onClick={onAdd}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      className={`group flex items-center gap-2.5 rounded-xl border-2 bg-white px-3 py-2.5 text-left shadow-sm transition-all tap-transparent ${
+        solves
+          ? 'border-emerald-400 hover:border-emerald-600 hover:shadow-md'
+          : 'border-slate-200 hover:border-emerald-400 hover:shadow-md'
+      }`}
+    >
+      <span className="text-2xl leading-none flex-shrink-0">{ing.icon}</span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-bold text-slate-900 leading-tight truncate">
+          {language === 'en' ? ing.nameEn : ing.nameUr}
+        </span>
+        <span className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-600">
+            <span aria-hidden>{cat.icon}</span>
+            {catName}
+          </span>
+          {effect && (
+            <span className="text-[10px] font-semibold text-emerald-700">
+              · {effect}
+            </span>
+          )}
+          {solves && fix.perKgPrice !== undefined && (
+            <span className="text-[10px] font-medium text-slate-500">
+              · ₨{Math.round(fix.perKgPrice)}/kg
+            </span>
+          )}
+        </span>
+      </span>
+
+      {/* The affordance: a plus button that reads as "tap to add" */}
+      <span
+        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+          solves
+            ? 'bg-emerald-600 text-white group-hover:bg-emerald-700'
+            : 'bg-slate-100 text-slate-600 group-hover:bg-emerald-600 group-hover:text-white'
+        }`}
+        aria-hidden
+      >
+        <Plus className="w-4 h-4" />
+      </span>
+    </motion.button>
+  );
 }
 
 /**
@@ -337,10 +505,13 @@ function FeasibilityGuide({
   language,
   status,
   compact = false,
+  onAddIngredient,
 }: {
   language: 'en' | 'ur';
   status: FeasibilityStatus;
   compact?: boolean;
+  /** Adds a suggested ingredient straight from a fix chip. */
+  onAddIngredient?: (category: string, key: string) => void;
 }) {
   // Don't render the compact variant before Step 1 is done — the top card
   // already shows the "pick an animal first" hint, no need to duplicate.
@@ -359,12 +530,16 @@ function FeasibilityGuide({
     status.kind === 'no_targets' ? Info :
     Sparkles;
 
-  // Localised top-level title for every state.
+  // Localised top-level title for every state. For the infeasible case the
+  // headline states the ACTION, not the problem — "Add one more ingredient"
+  // tells the farmer what to do; "Adjust your selection" does not.
   const title = (() => {
     if (status.kind === 'feasible')   return language === 'en' ? "Looks good — you're ready" : 'سب ٹھیک ہے — آپ تیار ہیں';
     if (status.kind === 'no_targets') return language === 'en' ? 'Pick an animal and stage first' : 'پہلے جانور اور مرحلہ منتخب کریں';
     if (status.kind === 'pending')    return language === 'en' ? 'Keep selecting'   : 'منتخب کرتے رہیں';
-    return language === 'en' ? 'Adjust your selection' : 'اپنا انتخاب درست کریں';
+    const oneTapFixes = status.analysis?.fixes.some((f) => f.kind === 'exact_fix');
+    if (oneTapFixes) return language === 'en' ? 'Add one more ingredient' : 'ایک اور جزو شامل کریں';
+    return language === 'en' ? 'Add a few more ingredients' : 'مزید اجزاء شامل کریں';
   })();
 
   // Subtitle for non-infeasible states (the infeasible state renders a richer body).
@@ -380,14 +555,17 @@ function FeasibilityGuide({
         : 'ہدف کی غیر موجودگی میں جانچ ممکن نہیں۔';
     }
     if (status.kind === 'pending') {
-      const missing = status.missingCategories
-        .map((k) => INGREDIENT_CATEGORIES[k as keyof typeof INGREDIENT_CATEGORIES])
-        .map((c) => c?.[language === 'en' ? 'titleEn' : 'titleUr'])
-        .filter(Boolean)
-        .join(language === 'en' ? ' and ' : ' اور ');
+      // Name the exact sections and how many are still needed, e.g.
+      // "Choose 1 from Energy Sources and 1 from Protein Sources."
+      const parts = status.missingCategories.map((k) => {
+        const cat = INGREDIENT_CATEGORIES[k as keyof typeof INGREDIENT_CATEGORIES];
+        const name = cat?.[language === 'en' ? 'titleEn' : 'titleUr'] ?? k;
+        return language === 'en' ? `${cat?.min ?? 1} from ${name}` : `${name} سے ${cat?.min ?? 1}`;
+      });
+      const list = parts.join(language === 'en' ? ' and ' : ' اور ');
       return language === 'en'
-        ? `Pick at least one ingredient from ${missing} so we can check the targets.`
-        : `${missing} میں سے کم از کم ایک جزو منتخب کریں تاکہ ہدف کی جانچ ہو سکے۔`;
+        ? `Choose ${list}. Then we can check the animal's targets for you.`
+        : `${list} منتخب کریں۔ پھر ہم جانور کے اہداف کی جانچ کر دیں گے۔`;
     }
     return '';
   })();
@@ -411,12 +589,16 @@ function FeasibilityGuide({
   }
 
   // -------- Rich infeasible body (the main UX win) --------
+  //
+  // Ordering is deliberate, and it is the opposite of what the panel used to do.
+  // The FIX comes first and takes up most of the space; the nutrient numbers are
+  // demoted to an optional "why" section underneath. A farmer who can't read a
+  // nutrient table can still act on a row of pictures with plus buttons.
   if (status.kind === 'infeasible' && status.analysis) {
-    const { hardBlockers, conflictingNutrients } = status.analysis;
+    const { hardBlockers, conflictingNutrients, fixes } = status.analysis;
     const tooHigh = hardBlockers.filter((g) => g.direction === 'too_high');
     const tooLow  = hardBlockers.filter((g) => g.direction === 'too_low');
-    const quickFix = buildQuickFix(status.analysis, language);
-    const totalIssues = hardBlockers.length || conflictingNutrients.length;
+    const hasExactFix = fixes.some((f) => f.kind === 'exact_fix');
 
     return (
       <AnimatePresence mode="wait">
@@ -426,77 +608,74 @@ function FeasibilityGuide({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className={`rounded-lg border-2 p-4 sm:p-5 ${palette.bg} ${palette.border} ${palette.text}`}
+          className={`rounded-xl border-2 p-4 sm:p-5 ${palette.bg} ${palette.border} ${palette.text}`}
         >
           <div className="flex items-start gap-3">
             <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${palette.icon}`} />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold">
-                {title}
-                {totalIssues > 0 && (
-                  <span className="ml-2 text-xs font-normal opacity-70">
+              <p className="font-bold text-base">{title}</p>
+              <p className="text-sm opacity-90 mt-0.5 leading-relaxed">
+                {hasExactFix
+                  ? (language === 'en'
+                      ? 'Tap any ONE of these and your feed will be balanced:'
+                      : 'ان میں سے کوئی ایک دبائیں، آپ کا فارمولا مکمل ہو جائے گا:')
+                  : (language === 'en'
+                      ? 'Your picks cannot meet the target yet. Adding these will help:'
+                      : 'ابھی ہدف پورا نہیں ہو رہا۔ یہ اجزاء شامل کرنے سے مدد ملے گی:')}
+              </p>
+            </div>
+          </div>
+
+          {/* THE FIX — tappable ingredient chips */}
+          {fixes.length > 0 && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {fixes.map((f) => (
+                <FixChip
+                  key={f.key}
+                  fix={f}
+                  language={language}
+                  onAdd={() => onAddIngredient?.(f.category, f.key)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Secondary "why" — the actual numbers, for users who want them.
+              Collapsed into a <details> so it never competes with the fix. */}
+          {(hardBlockers.length > 0 || conflictingNutrients.length > 0) && (
+            <details className="mt-3 group">
+              <summary className="cursor-pointer text-xs font-semibold opacity-75 hover:opacity-100 select-none list-none flex items-center gap-1">
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                {language === 'en' ? 'Why? (show numbers)' : 'کیوں؟ (تفصیل دیکھیں)'}
+              </summary>
+
+              {hardBlockers.length > 0 && (
+                <div className="mt-2 grid sm:grid-cols-2 gap-3">
+                  {tooHigh.length > 0 && (
+                    <GapColumn language={language} direction="too_high" gaps={tooHigh} accent={palette.accent} />
+                  )}
+                  {tooLow.length > 0 && (
+                    <GapColumn language={language} direction="too_low" gaps={tooLow} accent={palette.accent} />
+                  )}
+                </div>
+              )}
+
+              {hardBlockers.length === 0 && conflictingNutrients.length > 0 && (
+                <div className={`mt-2 rounded-md p-3 text-sm ${palette.accent}`}>
+                  <p className="font-medium">
                     {language === 'en'
-                      ? `${totalIssues} ${totalIssues === 1 ? 'issue' : 'issues'}`
-                      : `${totalIssues} مسئلے`}
-                  </span>
-                )}
-              </p>
-              <p className="text-sm opacity-90 mt-0.5">
-                {language === 'en'
-                  ? "Your current ingredients can't satisfy the animal's nutrient targets — here's what's off:"
-                  : 'آپ کے اجزاء جانور کے غذائی اہداف پورے نہیں کر رہے — یہ مسائل ہیں:'}
-              </p>
-            </div>
-          </div>
-
-          {/* Two-column gap layout: too-high on the left, too-low on the right */}
-          {hardBlockers.length > 0 && (
-            <div className="mt-4 grid sm:grid-cols-2 gap-3">
-              {tooHigh.length > 0 && (
-                <GapColumn
-                  language={language}
-                  direction="too_high"
-                  gaps={tooHigh}
-                  accent={palette.accent}
-                />
+                      ? 'These targets pull against each other:'
+                      : 'یہ اہداف ایک دوسرے سے ٹکراؤ میں ہیں:'}
+                  </p>
+                  <p className="mt-1 opacity-90">
+                    {conflictingNutrients
+                      .map((n) => NUTRIENT_INFO[n]?.[language === 'en' ? 'en' : 'ur'] ?? n)
+                      .join(language === 'en' ? ', ' : '، ')}
+                  </p>
+                </div>
               )}
-              {tooLow.length > 0 && (
-                <GapColumn
-                  language={language}
-                  direction="too_low"
-                  gaps={tooLow}
-                  accent={palette.accent}
-                />
-              )}
-            </div>
+            </details>
           )}
-
-          {/* Conflicting nutrients case — Pass 2 (no hard blockers but combined infeasible) */}
-          {hardBlockers.length === 0 && conflictingNutrients.length > 0 && (
-            <div className={`mt-4 rounded-md p-3 text-sm ${palette.accent}`}>
-              <p className="font-medium">
-                {language === 'en'
-                  ? 'These targets conflict with each other:'
-                  : 'یہ اہداف ایک دوسرے سے ٹکراؤ میں ہیں:'}
-              </p>
-              <p className="mt-1 opacity-90">
-                {conflictingNutrients
-                  .map((n) => NUTRIENT_INFO[n]?.[language === 'en' ? 'en' : 'ur'] ?? n)
-                  .join(language === 'en' ? ', ' : '، ')}
-              </p>
-            </div>
-          )}
-
-          {/* Quick-fix recommendation */}
-          <div className={`mt-4 rounded-md p-3 flex gap-2 text-sm ${palette.accent}`}>
-            <Sparkles className={`w-4 h-4 flex-shrink-0 mt-0.5 ${palette.icon}`} />
-            <div>
-              <p className="font-semibold">
-                {language === 'en' ? 'Quick fix' : 'فوری حل'}
-              </p>
-              <p className="opacity-90 leading-relaxed">{quickFix}</p>
-            </div>
-          </div>
         </motion.div>
       </AnimatePresence>
     );
@@ -685,6 +864,13 @@ export function Step2Ingredients({
     return () => clearTimeout(handle);
   }, [feasibility.kind, language]);
 
+  // Keys the solver recommends right now — drives the "ADD THIS" card treatment
+  // and the per-section "N suggested" badge.
+  const recommendedKeys = useMemo(
+    () => new Set(feasibility.kind === 'infeasible' ? (feasibility.analysis?.fixes ?? []).map((f) => f.key) : []),
+    [feasibility]
+  );
+
   const t = {
     ingredientSelection: language === 'en' ? 'Select Ingredients' : 'اجزاء منتخب کریں',
     next: language === 'en' ? 'Next' : 'اگلا',
@@ -753,19 +939,23 @@ export function Step2Ingredients({
           </Button>
         </div>
 
-        <FeasibilityGuide language={language} status={feasibility} />
+        <FeasibilityGuide
+          language={language}
+          status={feasibility}
+          onAddIngredient={onIngredientToggle}
+        />
 
         {/* Re-keyed by customVersion so newly-added ingredients appear immediately. */}
         <div className="space-y-8" key={customVersion}>
           {Object.entries(INGREDIENT_CATEGORIES).map(([categoryKey, category]) => (
             <IngredientGroup
               key={categoryKey}
-              categoryKey={categoryKey}
               title={category[language === 'en' ? 'titleEn' : 'titleUr']}
               language={language}
               ingredients={getCategoryIngredientKeys(categoryKey as keyof typeof INGREDIENT_CATEGORIES)}
               selected={chosenIngredients[categoryKey] || []}
               minRequired={category.min}
+              recommendedKeys={recommendedKeys}
               onToggle={(ingredient) => onIngredientToggle(categoryKey, ingredient)}
               onIngredientInfo={setSelectedIngredientInfo}
               onIngredientDelete={handleDeleteCustom}

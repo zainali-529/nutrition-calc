@@ -36,7 +36,12 @@
 import solver from 'javascript-lp-solver';
 import type { NutrientRange } from './constants';
 import { getAnyIngredient, isForage, type AnyIngredient } from './forages';
-import type { OptimisationMode } from './autoFormulate';
+import {
+  BALANCED_BISECTION_STEPS,
+  BALANCED_REFINE_STEPS,
+  tightenRanges,
+  type OptimisationMode,
+} from './autoFormulate';
 
 export interface TmrFormulateInput {
   /** All ingredient keys (forages AND concentrates, mixed). */
@@ -137,14 +142,16 @@ export function tmrFormulate(input: TmrFormulateInput): TmrResult {
     }
   }
 
-  // Balanced-mode constraints (one ≤-pair per nutrient — slack absorbs deviation
-  // from the range midpoint). See lib/autoFormulate.ts for the derivation.
   const mode = input.mode ?? 'min_cost';
+
+  // Balanced mode is solved by range-tightening, not by slack variables — the
+  // slack model is degenerate and made javascript-lp-solver cycle forever
+  // (a frozen tab, since Step 3 runs this mode on mount). Confirmed reachable
+  // here too: dairy cow late lactation + sesame cake at a 55% forage split.
+  // See solveBalancedByTightening() in lib/autoFormulate.ts for the full
+  // rationale; this mirrors it.
   if (mode === 'balanced') {
-    for (const c of CONSTRAINED) {
-      constraints[`bal_${c.key}_pos`] = { max: 0 };
-      constraints[`bal_${c.key}_neg`] = { max: 0 };
-    }
+    return solveTmrBalancedByTightening(input, batchSize);
   }
 
   // Build per-ingredient coefficient rows
@@ -156,7 +163,6 @@ export function tmrFormulate(input: TmrFormulateInput): TmrResult {
       cost:     ing.price ?? 0,
       cp_total: dmFrac * (ing.cp ?? 0),
       me_total: dmFrac * (ing.me ?? 0),
-      bal_obj:  0,                     // ingredients don't contribute directly to bal_obj
     };
 
     // Nutrient constraints (same form as concentrate LP)
@@ -165,15 +171,6 @@ export function tmrFormulate(input: TmrFormulateInput): TmrResult {
       const bound = input.ranges[c.rangeKey];
       coef[`${c.key}_min`] = dmFrac * (value - bound.min);
       coef[`${c.key}_max`] = dmFrac * (value - bound.max);
-
-      // Balanced-mode deviation coefficient (range-width-weighted)
-      if (mode === 'balanced') {
-        const mid   = (bound.min + bound.max) / 2;
-        const width = bound.max - bound.min || 1;
-        const devCoef = dmFrac * (value - mid) / width;
-        coef[`bal_${c.key}_pos`] =  devCoef;
-        coef[`bal_${c.key}_neg`] = -devCoef;
-      }
     }
 
     // DM-split coefficient: + (1-f) × dmFrac for forages, − f × dmFrac for concentrates.
@@ -190,22 +187,11 @@ export function tmrFormulate(input: TmrFormulateInput): TmrResult {
     variables[ing.key] = coef;
   }
 
-  // Add balanced-mode slack variables (one per constrained nutrient)
-  if (mode === 'balanced') {
-    for (const c of CONSTRAINED) {
-      variables[`bal_abs_${c.key}`] = {
-        bal_obj:                1,
-        [`bal_${c.key}_pos`]:  -1,
-        [`bal_${c.key}_neg`]:  -1,
-      };
-    }
-  }
-
-  // Choose objective
+  // Choose objective. 'balanced' never reaches here — handled above by
+  // solveTmrBalancedByTightening().
   const [optimizeField, opType] =
     mode === 'max_protein' ? ['cp_total', 'max'] as const :
     mode === 'max_energy'  ? ['me_total', 'max'] as const :
-    mode === 'balanced'    ? ['bal_obj',  'min'] as const :
                               ['cost',     'min'] as const;
 
   const model = { optimize: optimizeField, opType, constraints, variables };
@@ -251,6 +237,69 @@ export function tmrFormulate(input: TmrFormulateInput): TmrResult {
     achievedForagePct,
     achievedConcentratePct,
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Balanced mode — same range-tightening strategy as the concentrate solver.
+//
+// Shrink every whole-diet target toward its midpoint by a common factor t and
+// bisect for the largest t that still solves, keeping the last feasible answer.
+// Each trial is an ordinary min/max model, so the degenerate slack formulation
+// that could cycle forever never gets built. The DM-split equality, the
+// per-ingredient caps and any locks all carry through unchanged, because each
+// trial is a full `tmrFormulate` call with only `ranges` and `mode` swapped.
+// ────────────────────────────────────────────────────────────────────────────
+
+function solveTmrBalancedByTightening(
+  input: TmrFormulateInput,
+  batchSize: number,
+): TmrResult {
+  // Feasible at all, at the original ranges?
+  const base = tmrFormulate({ ...input, mode: 'min_cost', _skipDiagnosis: true });
+  if (!base.success) {
+    // Re-run with diagnosis so the caller still gets a bottleneck message.
+    return input._skipDiagnosis
+      ? base
+      : tmrFormulate({ ...input, mode: 'min_cost' });
+  }
+
+  const solve = (ranges: NutrientRange) =>
+    tmrFormulate({ ...input, mode: 'min_cost', ranges, _skipDiagnosis: true });
+
+  // Per-nutrient limits first (a nutrient that can't reach its midpoint must not
+  // hold the others back), then compose and back off on conflict. Mirrors
+  // solveBalancedByTightening() in lib/autoFormulate.ts — see it for the why.
+  const tvec: Record<string, number> = {};
+  for (const c of CONSTRAINED) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < BALANCED_REFINE_STEPS; i++) {
+      const t = (lo + hi) / 2;
+      if (solve(tightenRanges(input.ranges, { [c.rangeKey]: t })).success) lo = t;
+      else hi = t;
+    }
+    tvec[c.rangeKey] = lo;
+  }
+
+  let best = base;
+  const scaled = (s: number) => {
+    const v: Record<string, number> = {};
+    for (const c of CONSTRAINED) v[c.rangeKey] = tvec[c.rangeKey] * s;
+    return v;
+  };
+  const full = solve(tightenRanges(input.ranges, scaled(1)));
+  if (full.success) {
+    best = full;
+  } else {
+    let sLo = 0, sHi = 1;
+    for (let i = 0; i < BALANCED_BISECTION_STEPS; i++) {
+      const s = (sLo + sHi) / 2;
+      const trial = solve(tightenRanges(input.ranges, scaled(s)));
+      if (trial.success) { best = trial; sLo = s; } else { sHi = s; }
+    }
+  }
+
+  void batchSize;   // kept for signature symmetry with the concentrate solver
+  return best;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

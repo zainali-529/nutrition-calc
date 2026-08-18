@@ -9,7 +9,7 @@
 // >>> TO ADD A NEW INGREDIENT <<<
 // Simply add a new entry to the INGREDIENTS array below. Fill in:
 //   - key:        unique id (snake_case)
-//   - category:   'energy' | 'protein' | 'fiber' | 'fat'
+//   - category:   'energy' | 'protein' | 'fiber' | 'fat' | 'supplement'
 //   - icon:       one emoji character
 //   - nameEn / nameUr + energy/protein levels
 //   - nutritional values on DM basis
@@ -19,7 +19,20 @@
 import { getOverride } from './ingredientOverrides';
 import { getCustomIngredient, getCustomIngredients } from './customIngredients';
 
-export type IngredientCategory = 'energy' | 'protein' | 'fiber' | 'fat';
+/**
+ * The five ingredient buckets shown in Step 2.
+ *
+ * `fat` holds TRUE fat/oil sources only (bypass fats and free vegetable oils).
+ * `supplement` holds minerals and buffers (limestone, DCP, salt, soda) — these
+ * used to live under `fat`, which made the category a grab-bag. They are now
+ * separate so the picker reads correctly and so a farmer choosing "fat" gets
+ * energy-dense fat rather than a calcium source.
+ *
+ * Ingredient KEYS were deliberately left unchanged during that split, so
+ * existing saved formulas and templates keep resolving. `savedFormulas.ts`
+ * re-buckets old saves on load — see `migrateChosenIngredients()` there.
+ */
+export type IngredientCategory = 'energy' | 'protein' | 'fiber' | 'fat' | 'supplement';
 export type IntensityLevel = 'high' | 'med' | 'low';
 
 export interface Ingredient {
@@ -404,11 +417,33 @@ export const INGREDIENTS: Ingredient[] = [
   },
 
   // =========================================================================
-  //  SUPPLEMENTS  —  minerals, buffers, and fat supplements
+  //  FATS & OILS  —  true fat sources (energy-dense, no protein)
+  // =========================================================================
+  //
+  // Two families, and the distinction matters a lot in practice:
+  //
+  //   1. BYPASS (rumen-protected) FAT — the fatty acids are either calcium
+  //      soaps or hydrogenated/prilled, so they pass the rumen inert and are
+  //      absorbed in the small intestine. Safe at meaningful inclusions.
+  //
+  //   2. FREE VEGETABLE OILS — unprotected. They coat fibre particles and are
+  //      toxic to cellulolytic rumen bacteria, so fibre digestion and milk fat
+  //      collapse well before the diet's total-fat ceiling is reached. Every
+  //      free oil is therefore capped at 2-3%, far below the bypass fats.
+  //
+  // Energy values are scaled from the long-standing `bypassFat` anchor
+  // (99% fat → ME 4.78, TDN 180) so the whole category stays internally
+  // consistent: ME ≈ 4.78 × (fat% / 99), TDN ≈ 180 × (fat% / 99).
+  //
+  // NOTE: several ingredients in OTHER categories are also significant fat
+  // sources — whole cottonseed (20% fat), rice polish (13%), rice bran (14%),
+  // sesame cake (10%). Those usually supply fat more cheaply than pure oil.
   // =========================================================================
   {
+    // Unchanged key ('bypassFat') — renaming it would orphan every saved
+    // formula and template that references it. Only the label now states 99%.
     key: 'bypassFat', category: 'fat', icon: '🛢️',
-    nameEn: 'Bypass Fat', nameUr: 'بائی پاس فیٹ',
+    nameEn: 'Bypass Fat 99% (Prilled)', nameUr: 'بائی پاس فیٹ 99%',
     energyLevel: 'high', proteinLevel: 'low',
     dm: 99, cp: 0, me: 4.78, tdn: 180, adf: 0, ndf: 0, fat: 99, starch: 0,
     ca: 0, p: 0, ash: 0, price: 400, maxInclusion: 5,
@@ -418,7 +453,98 @@ export const INGREDIENTS: Ingredient[] = [
     notesUr: 'رومین محفوظ چکنائی — دودھ کے لیے 100-300 گرام/دن۔ کل چکنائی 6% سے زیادہ نہ ہو۔',
   },
   {
-    key: 'limestone', category: 'fat', icon: '🪨',
+    // Calcium salts of palm fatty acids — the other common commercial grade.
+    // Lower fat than the prilled 99% product, but it carries ~9% calcium,
+    // which the LP correctly counts toward the Ca requirement.
+    key: 'bypass_fat_85', category: 'fat', icon: '🧴',
+    nameEn: 'Bypass Fat 85% (Calcium Soap)', nameUr: 'بائی پاس فیٹ 85% (کیلشیم سوپ)',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 96, cp: 0, me: 4.10, tdn: 155, adf: 0, ndf: 0, fat: 85, starch: 0,
+    ca: 9, p: 0, ash: 10, price: 340, maxInclusion: 6,
+    capReasonEn: 'Calcium-soap bypass fat is the most rumen-inert form, so it tolerates a slightly higher cap than prilled fat. The limit is still total diet fat (6-7%) — and because this product is ~9% calcium, high inclusions also push calcium up and can break the Ca:P ratio.',
+    capReasonUr: 'کیلشیم سوپ والی بائی پاس فیٹ رومن میں سب سے زیادہ غیر فعال ہے، اس لیے حد تھوڑی زیادہ ہے۔ پھر بھی کل چکنائی 6-7% سے کم رکھیں — اور اس میں تقریباً 9% کیلشیم ہے، زیادہ مقدار Ca:P توازن بگاڑ سکتی ہے۔',
+    notesEn: 'Cheaper per kg than prilled 99% fat and supplies calcium too. Slightly less energy-dense (85% fat).',
+    notesUr: 'پرلڈ 99% سے سستی اور ساتھ کیلشیم بھی دیتی ہے۔ توانائی تھوڑی کم (85% چکنائی)۔',
+  },
+  {
+    key: 'mustard_oil', category: 'fat', icon: '🌻',
+    nameEn: 'Mustard Oil (Sarson ka Tel)', nameUr: 'سرسوں کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 520, maxInclusion: 2,
+    capReasonEn: 'Free (unprotected) oil — it coats fibre particles and kills cellulolytic rumen bacteria, so fibre digestion and milk fat drop well before the diet fat ceiling. Mustard oil additionally carries erucic acid and a pungent smell that suppresses intake. Keep to 2% and always mix into the grain, never pour on top.',
+    capReasonUr: 'کھلا (غیر محفوظ) تیل — فائبر کے ذرات پر چڑھ جاتا ہے اور رومن کے فائبر ہضم کرنے والے جراثیم مار دیتا ہے، اس لیے دودھ کی چکنائی جلد گر جاتی ہے۔ سرسوں کے تیل میں اروسک ایسڈ اور تیز بو بھی ہے جو خوراک کم کر دیتی ہے۔ 2% تک رکھیں اور دانے میں اچھی طرح ملائیں۔',
+    notesEn: 'Widely available across Punjab. Cheapest way to lift fat when bypass fat is unavailable — but far less rumen-safe.',
+    notesUr: 'پنجاب بھر میں دستیاب۔ بائی پاس فیٹ نہ ملنے پر سستا متبادل — مگر رومن کے لیے کم محفوظ۔',
+  },
+  {
+    key: 'sesame_oil', category: 'fat', icon: '🫗',
+    nameEn: 'Sesame Oil (Til ka Tel)', nameUr: 'تل کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 600, maxInclusion: 2,
+    capReasonEn: 'Free oil — same rumen-fibre problem as any unprotected oil, so capped at 2%. Sesame oil is unusually oxidation-stable (natural sesamol/sesamin antioxidants) and palatable, but it is one of the most expensive fat sources per Mcal, so high inclusions are rarely economic.',
+    capReasonUr: 'کھلا تیل — ہر غیر محفوظ تیل کی طرح رومن کی فائبر ہضم متاثر کرتا ہے، اس لیے 2% تک۔ تل کا تیل خراب ہونے میں دیر لگاتا ہے اور ذائقہ اچھا ہے، مگر فی توانائی سب سے مہنگا ہے۔',
+    notesEn: 'Most oxidation-stable of the local oils — good shelf life in heat. Premium priced; South Punjab specialty.',
+    notesUr: 'مقامی تیلوں میں سب سے دیرپا — گرمی میں خراب نہیں ہوتا۔ مہنگا؛ جنوبی پنجاب کی خصوصیت۔',
+  },
+  {
+    // Taramira = Eruca sativa (rocket). A traditional rain-fed oilseed of
+    // Punjab / Sindh; the oil is pungent and mostly non-food, so it reaches
+    // feed markets cheaply.
+    key: 'taramira_oil', category: 'fat', icon: '🌾',
+    nameEn: 'Taramira Oil (Eruca sativa)', nameUr: 'تارامیرا کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 400, maxInclusion: 2,
+    capReasonEn: 'Free oil, plus the highest erucic-acid and glucosinolate load of any local oil — extremely pungent. Above 2% cattle refuse the feed outright, and the glucosinolate breakdown products affect the thyroid. Cheapest oil in the market precisely because of this.',
+    capReasonUr: 'کھلا تیل، اور مقامی تیلوں میں اروسک ایسڈ اور گلوکوسینولیٹ سب سے زیادہ — بہت تیز بو۔ 2% سے زیادہ پر جانور کھانے سے انکار کر دیتا ہے، اور تھائیرائیڈ پر اثر پڑتا ہے۔ اسی وجہ سے سب سے سستا۔',
+    notesEn: 'Rain-fed Punjab/Sindh oilseed. Cheapest oil available, but the most intake-limiting — introduce very gradually.',
+    notesUr: 'بارانی پنجاب/سندھ کی فصل۔ سستا ترین تیل مگر خوراک سب سے زیادہ کم کرتا ہے — آہستہ آہستہ شامل کریں۔',
+  },
+  {
+    key: 'linseed_oil', category: 'fat', icon: '🟣',
+    nameEn: 'Linseed Oil (Alsi ka Tel)', nameUr: 'السی کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 550, maxInclusion: 2,
+    capReasonEn: 'Free oil, and ~55% of it is alpha-linolenic acid (omega-3). Polyunsaturated oils are the WORST for the rumen — they poison fibre-digesting bacteria faster than saturated fats and cause milk-fat depression at low inclusions. It also oxidises (goes rancid) within days in Pakistani heat. Hard 2% cap.',
+    capReasonUr: 'کھلا تیل، اور تقریباً 55% اومیگا-3 (الفا لینولینک ایسڈ)۔ کثیر غیر سیر شدہ تیل رومن کے لیے سب سے زیادہ نقصان دہ — فائبر ہضم کرنے والے جراثیم تیزی سے مارتا ہے اور دودھ کی چکنائی کم کر دیتا ہے۔ گرمی میں چند دن میں خراب۔ سخت 2% حد۔',
+    notesEn: 'Improves milk omega-3 and ghee colour, but store cool and use fast — shortest shelf life of any oil here.',
+    notesUr: 'دودھ میں اومیگا-3 اور گھی کا رنگ بہتر کرتا ہے، مگر ٹھنڈی جگہ رکھیں اور جلد استعمال کریں۔',
+  },
+  {
+    key: 'rice_bran_oil', category: 'fat', icon: '🟤',
+    nameEn: 'Rice Bran Oil', nameUr: 'چاول کی بھوسی کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 380, maxInclusion: 2.5,
+    capReasonEn: 'Free oil — capped for the same rumen-fibre reason as the others, but slightly higher than the pungent oils because it is bland and does not depress intake. Naturally rich in oryzanol and vitamin E, which slows rancidity. Frequently adulterated in local markets — check before buying in bulk.',
+    capReasonUr: 'کھلا تیل — دیگر تیلوں جیسی وجہ سے محدود، مگر بو نہ ہونے کی وجہ سے حد تھوڑی زیادہ۔ اوریزانول اور وٹامن E کی وجہ سے جلد خراب نہیں ہوتا۔ مقامی بازار میں ملاوٹ عام — خریدنے سے پہلے جانچ لیں۔',
+    notesEn: 'Cheapest bland oil — no intake penalty, abundant from Pakistan\'s rice mills. Best free-oil choice for dairy.',
+    notesUr: 'سستا اور بے بو تیل — جانور آسانی سے کھاتا ہے، چاول کی ملوں سے وافر۔ دودھ کے لیے بہترین کھلا تیل۔',
+  },
+  {
+    key: 'canola_oil', category: 'fat', icon: '🌼',
+    nameEn: 'Canola Oil', nameUr: 'کینولا کا تیل',
+    energyLevel: 'high', proteinLevel: 'low',
+    dm: 100, cp: 0, me: 4.83, tdn: 182, adf: 0, ndf: 0, fat: 100, starch: 0,
+    ca: 0, p: 0, ash: 0, price: 480, maxInclusion: 2.5,
+    capReasonEn: 'Free oil — same 2-3% rumen limit. Canola is the low-erucic-acid, low-glucosinolate improved rape variety, so unlike mustard or taramira oil it is bland and does not cut intake. Mostly monounsaturated, making it gentler on the rumen than linseed oil.',
+    capReasonUr: 'کھلا تیل — وہی 2-3% رومن حد۔ کینولا بہتر قسم ہے جس میں اروسک ایسڈ اور گلوکوسینولیٹ کم ہیں، اس لیے سرسوں یا تارامیرا کے تیل کی طرح خوراک کم نہیں کرتا۔ زیادہ تر یک غیر سیر شدہ، رومن کے لیے السی سے بہتر۔',
+    notesEn: 'Bland like rice bran oil but pricier. Gentler fatty-acid profile than linseed; good compromise choice.',
+    notesUr: 'چاول کے تیل کی طرح بے بو مگر مہنگا۔ السی سے بہتر فیٹی ایسڈ پروفائل۔',
+  },
+
+  // =========================================================================
+  //  SUPPLEMENTS & MINERALS  —  macro-minerals and rumen buffers
+  // =========================================================================
+  // These carry no protein and (except limestone/DCP's calcium) no energy —
+  // they exist to close mineral gaps and stabilise rumen pH. Previously filed
+  // under the 'fat' category; now their own bucket. Keys are unchanged.
+  // =========================================================================
+  {
+    key: 'limestone', category: 'supplement', icon: '🪨',
     nameEn: 'Limestone (Choona Patthar)', nameUr: 'چونا پتھر',
     energyLevel: 'low', proteinLevel: 'low',
     dm: 98, cp: 0, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0,
@@ -429,7 +555,7 @@ export const INGREDIENTS: Ingredient[] = [
     notesUr: 'بنیادی کیلشیم — 36% کیلشیم۔ عام طور پر 1-2% شامل کریں۔',
   },
   {
-    key: 'dcp', category: 'fat', icon: '💊',
+    key: 'dcp', category: 'supplement', icon: '💊',
     nameEn: 'DCP (Dicalcium Phosphate)', nameUr: 'ڈی سی پی',
     energyLevel: 'low', proteinLevel: 'low',
     dm: 96, cp: 0, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0,
@@ -440,7 +566,7 @@ export const INGREDIENTS: Ingredient[] = [
     notesUr: 'کیلشیم + فاسفورس — 22% Ca, 18% P۔ 0.5-1% شامل کریں۔',
   },
   {
-    key: 'salt', category: 'fat', icon: '🧂',
+    key: 'salt', category: 'supplement', icon: '🧂',
     nameEn: 'Salt (Namak)', nameUr: 'نمک',
     energyLevel: 'low', proteinLevel: 'low',
     dm: 99, cp: 0, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0,
@@ -451,7 +577,7 @@ export const INGREDIENTS: Ingredient[] = [
     notesUr: 'ضروری — 0.5-1% شامل کریں',
   },
   {
-    key: 'sodium_bicarb', category: 'fat', icon: '💎',
+    key: 'sodium_bicarb', category: 'supplement', icon: '💎',
     nameEn: 'Sodium Bicarbonate (Meethoda)', nameUr: 'میٹھا سوڈا',
     energyLevel: 'low', proteinLevel: 'low',
     dm: 99, cp: 0, me: 0, tdn: 0, adf: 0, ndf: 0, fat: 0, starch: 0,
@@ -549,12 +675,48 @@ export const INGREDIENT_CATEGORIES = {
     ingredients: INGREDIENTS.filter((i) => i.category === 'fiber').map((i) => i.key),
   },
   fat: {
-    titleEn: 'Supplements & Minerals',
-    titleUr: 'سپلیمنٹس اور معدنیات',
+    titleEn: 'Fats & Oils',
+    titleUr: 'چکنائی اور تیل',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'fat').map((i) => i.key),
   },
+  supplement: {
+    titleEn: 'Supplements & Minerals',
+    titleUr: 'سپلیمنٹس اور معدنیات',
+    min: 0,
+    ingredients: INGREDIENTS.filter((i) => i.category === 'supplement').map((i) => i.key),
+  },
 } as const;
+
+/** Every category key, in the order Step 2 renders them. */
+export const CATEGORY_KEYS = [
+  'energy', 'protein', 'fiber', 'fat', 'supplement',
+] as const satisfies readonly IngredientCategory[];
+
+/**
+ * A fresh, empty `chosenIngredients` map with every category bucket present.
+ * Use this instead of hand-writing the object literal so adding a category in
+ * future doesn't require touching each call site.
+ */
+export function emptyChosenIngredients(): Record<string, string[]> {
+  return Object.fromEntries(CATEGORY_KEYS.map((k) => [k, [] as string[]]));
+}
+
+/**
+ * Resolve which category currently owns an ingredient key.
+ *
+ * Goes through `getIngredient()` first because that handles built-ins AND
+ * user-added custom ingredients; falls back to the static category lists.
+ * Returns null for unknown keys so callers can decide how to handle them.
+ */
+export function categoryOfIngredient(key: string): IngredientCategory | null {
+  const ing = getIngredient(key);
+  if (ing) return ing.category;
+  for (const catKey of CATEGORY_KEYS) {
+    if (INGREDIENT_CATEGORIES[catKey].ingredients.includes(key)) return catKey;
+  }
+  return null;
+}
 
 // ================================================================================
 // ANIMAL / STAGE / REGION DATA — targets & labels (unrelated to ingredients)

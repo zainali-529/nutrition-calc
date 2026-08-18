@@ -20,7 +20,7 @@
 // Total Qty = 156 kg (CP 24.377%, ME 2.980 Mcal/kg DM, TDN 79.281%, etc.)
 // ================================================================================
 
-import { getIngredient, NutrientRange } from './constants';
+import { CATEGORY_KEYS, getIngredient, NutrientRange } from './constants';
 
 export interface FormulaItem {
   name: string;
@@ -154,12 +154,9 @@ export function calculateNutrients(formula: FormulaItem[]): NutrientCalculation 
 export function buildFormula(
   selectedIngredients: Record<string, string[]>
 ): FormulaItem[] {
-  const items = [
-    ...(selectedIngredients.energy  || []),
-    ...(selectedIngredients.protein || []),
-    ...(selectedIngredients.fiber   || []),
-    ...(selectedIngredients.fat     || []),
-  ];
+  // Flatten every category bucket in display order. Driven by CATEGORY_KEYS so
+  // a new category is picked up automatically rather than silently dropped.
+  const items = CATEGORY_KEYS.flatMap((cat) => selectedIngredients[cat] || []);
 
   if (items.length === 0) return [];
 
