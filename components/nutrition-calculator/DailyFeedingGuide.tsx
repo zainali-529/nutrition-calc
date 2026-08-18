@@ -161,9 +161,10 @@ export function DailyFeedingGuide({
     dailyCost:  language === 'en' ? 'Daily cost' : 'روزانہ خرچ',
     atPrice:    language === 'en' ? 'at' : 'بقدر',
     perKg:      language === 'en' ? '/kg as-fed' : 'فی کلو',
+    // The TMR calculator has shipped (/tmr) — this used to say "coming soon".
     forageNote: language === 'en'
-      ? 'Feed alongside fresh forage, hay, or silage as the farmer normally provides. TMR mode (concentrate + forage combined) is coming soon.'
-      : 'تازہ چارہ، گھاس یا سائیلج کے ساتھ دیں جیسا کسان عام طور پر کرتا ہے۔ TMR موڈ (مکمل ملا ہوا راشن) جلد آ رہا ہے۔',
+      ? 'Feed alongside fresh forage, hay, or silage. To formulate the forage and concentrate together, use the TMR calculator.'
+      : 'تازہ چارہ، گھاس یا سائیلج کے ساتھ دیں۔ چارہ اور کانسنٹریٹ ایک ساتھ بنانے کے لیے TMR کیلکولیٹر استعمال کریں۔',
     water:      language === 'en'
       ? 'Always provide fresh clean water (≈50 L/day for dairy cow, 5 L per L of milk extra)'
       : 'ہمیشہ صاف پانی فراہم کریں (دودھیل گائے کے لیے ~50 لیٹر/دن، ہر لیٹر دودھ پر اضافی 5 لیٹر)',
@@ -265,40 +266,37 @@ export function DailyFeedingGuide({
             </div>
           </div>
 
-          {/* Breakdown — show the math so the farmer learns the rule */}
-          <div className={`rounded-lg p-3 sm:p-4 border ${look.breakdownCardClass}`}>
-            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${look.titleClass}`}>
+          {/* Breakdown — the maths, so a farmer can learn the rule rather than
+              just trust the number. Collapsed by default: the headline kg figure
+              above is the answer, and on a phone this block cost a screenful of
+              scrolling to restate it. The old "Total" row is gone entirely — it
+              repeated the headline verbatim. */}
+          <details className={`group rounded-lg border ${look.breakdownCardClass}`}>
+            <summary className={`cursor-pointer list-none select-none px-3 py-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${look.titleClass}`}>
+              <span className="transition-transform group-open:rotate-90">▸</span>
               {t.breakdown}
-            </p>
-            <ul className="space-y-1.5">
-              {guide.breakdown.map((line, idx) => (
-                <li key={idx} className="flex items-baseline justify-between gap-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <span className={`font-semibold ${look.titleClass}`}>
-                      {language === 'en' ? BREAKDOWN_LABEL[line.kind].en : BREAKDOWN_LABEL[line.kind].ur}
+            </summary>
+            <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+              <ul className="space-y-1.5">
+                {guide.breakdown.map((line, idx) => (
+                  <li key={idx} className="flex items-baseline justify-between gap-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <span className={`font-semibold ${look.titleClass}`}>
+                        {language === 'en' ? BREAKDOWN_LABEL[line.kind].en : BREAKDOWN_LABEL[line.kind].ur}
+                      </span>
+                      <span className="text-gray-500 text-xs ml-2">{line.formula}</span>
+                    </div>
+                    <span className={`font-bold flex-shrink-0 ${look.titleClass}`}>
+                      {line.kg.toFixed(2)} kg
                     </span>
-                    <span className="text-gray-500 text-xs ml-2">{line.formula}</span>
-                  </div>
-                  <span className={`font-bold flex-shrink-0 ${look.titleClass}`}>
-                    {line.kg.toFixed(2)} kg
-                  </span>
-                </li>
-              ))}
-              {guide.breakdown.length > 1 && (
-                <li className="flex items-baseline justify-between gap-3 text-sm pt-1.5 border-t border-gray-200">
-                  <span className="font-bold text-gray-900">
-                    {language === 'en' ? 'Total' : 'کل'}
-                  </span>
-                  <span className={`font-bold ${look.titleClass}`}>
-                    {guide.concentrateKgPerDay.toFixed(2)} kg
-                  </span>
-                </li>
-              )}
-            </ul>
-            <p className={`mt-2 text-[11px] leading-relaxed italic ${look.bodyTextClass}`}>
-              {language === 'en' ? guide.rationaleEn : guide.rationaleUr}
-            </p>
-          </div>
+                  </li>
+                ))}
+              </ul>
+              <p className={`mt-2 text-[11px] leading-relaxed italic ${look.bodyTextClass}`}>
+                {language === 'en' ? guide.rationaleEn : guide.rationaleUr}
+              </p>
+            </div>
+          </details>
 
           {/* Practical farmer-side notes */}
           {guide.notesEn.length > 0 && (

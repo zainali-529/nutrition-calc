@@ -8,8 +8,8 @@ import {
   calculateNutrients,
   calculateTotalCost,
   calculateTotalWeight,
-  getNutrientStatus,
 } from '@/lib/calculations';
+import { NutrientGrid } from './NutrientGrid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NUTRITION_RANGES, getIngredientIcon, getNutritionRange } from '@/lib/constants';
@@ -32,138 +32,6 @@ interface Step3FormulaProps {
   onAutoBalanceConsumed?: () => void;
 }
 
-/**
- * A nutrient tile.
- *
- * Two deliberate design decisions here:
- *
- * 1. NO SOLID FILL FOR "IN RANGE". Filling the whole card saturated green made
- *    the grid shout, and — worse — it made the in-range cards the loudest thing
- *    on screen when the ones that actually need attention are the out-of-range
- *    ones. Status is carried by a small dot, a tinted border and the value's
- *    colour instead, so the eye is drawn to problems, not to successes.
- *
- * 2. A MINI RANGE BAR instead of just "20-22%". The number alone doesn't say
- *    whether you're comfortably centred or clinging to the edge of the target.
- *    The bar shows the target band and a marker for where this formula actually
- *    sits, which is the thing a farmer needs to judge at a glance.
- */
-function NutrientCard({
-  label,
-  value,
-  unit,
-  decimals = 1,
-  range,
-  language,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  decimals?: number;
-  range?: { min: number; max: number };
-  language: 'en' | 'ur';
-}) {
-  const status = range ? getNutrientStatus(value, range.min, range.max) : null;
-
-  const tone = {
-    success: { border: 'border-emerald-200', dot: 'bg-emerald-500', value: 'text-emerald-700', band: 'bg-emerald-200', mark: 'bg-emerald-600' },
-    warning: { border: 'border-amber-200',   dot: 'bg-amber-500',   value: 'text-amber-700',   band: 'bg-amber-200',   mark: 'bg-amber-600' },
-    error:   { border: 'border-rose-200',    dot: 'bg-rose-500',    value: 'text-rose-700',    band: 'bg-rose-200',    mark: 'bg-rose-600' },
-  }[status ?? 'success'];
-
-  // Marker position. The view window is the target band plus 60% of its width
-  // on each side, so the band sits in the middle and over/under-shoot is visible
-  // without the marker running off the end.
-  let bandLeft = 0, bandWidth = 0, markLeft = 0;
-  if (range) {
-    const span = (range.max - range.min) || Math.max(Math.abs(range.max), 1) * 0.2;
-    const viewLo = range.min - span * 0.6;
-    const viewHi = range.max + span * 0.6;
-    const pct = (v: number) => Math.min(100, Math.max(0, ((v - viewLo) / (viewHi - viewLo)) * 100));
-    bandLeft = pct(range.min);
-    bandWidth = pct(range.max) - bandLeft;
-    markLeft = pct(value);
-  }
-
-  const hint = !range
-    ? (language === 'en' ? 'no target' : 'ہدف نہیں')
-    : status === 'success'
-      ? (language === 'en' ? 'on target' : 'ہدف پر')
-      : value < range.min
-        ? (language === 'en' ? 'below target' : 'ہدف سے کم')
-        : (language === 'en' ? 'above target' : 'ہدف سے زیادہ');
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border bg-white px-3 py-2.5 transition-colors duration-300 ${
-        range ? tone.border : 'border-slate-200'
-      }`}
-    >
-      <div className="flex items-center gap-1.5 min-w-0">
-        {range && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${tone.dot}`} />}
-        <span className="text-[11px] font-semibold text-slate-500 truncate">{label}</span>
-      </div>
-
-      <div className="mt-0.5 flex items-baseline gap-1">
-        <span className={`text-xl font-bold tabular-nums leading-none ${range ? tone.value : 'text-slate-800'}`}>
-          {value.toFixed(decimals)}
-        </span>
-        <span className="text-[11px] font-medium text-slate-400">{unit}</span>
-      </div>
-
-      {range ? (
-        <>
-          {/* target band + current-value marker */}
-          <div className="mt-2 relative h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className={`absolute inset-y-0 rounded-full ${tone.band}`}
-              style={{ left: `${bandLeft}%`, width: `${bandWidth}%` }}
-            />
-          </div>
-          <div className="relative h-0">
-            <span
-              className={`absolute -top-[9px] w-[3px] h-3 rounded-full ${tone.mark}`}
-              style={{ left: `calc(${markLeft}% - 1.5px)` }}
-            />
-          </div>
-          <div className="mt-1.5 flex items-center justify-between gap-1">
-            <span className="text-[10px] text-slate-400 tabular-nums">
-              {range.min}–{range.max}{unit}
-            </span>
-            <span className={`text-[10px] font-medium ${tone.value}`}>{hint}</span>
-          </div>
-        </>
-      ) : (
-        <div className="mt-2 text-[10px] text-slate-400">{hint}</div>
-      )}
-    </motion.div>
-  );
-}
-
-/**
- * Display order for the nutrient grid.
- *
- * `TARGETED` are the 7 nutrients the LP constrains and the ranges cover, in the
- * order a farmer reasons about them: protein and energy first (what he's buying),
- * then digestibility and fibre, then fat, then the minerals. `UNTARGETED` are
- * informational readouts with no min/max to compare against.
- *
- * `key` indexes the `t` label map, `value` indexes NutrientCalculation, and
- * `range` indexes NutrientRange — keeping all three in one row is what stops
- * a label drifting away from the value it names.
- */
-const TARGETED = [
-  { key: 'protein',    value: 'protein',    range: 'protein',    unit: '%',    decimals: 1 },
-  { key: 'energy',     value: 'energy',     range: 'energy',     unit: 'Mcal', decimals: 2 },
-  { key: 'tdn',        value: 'tdn',        range: 'tdn',        unit: '%',    decimals: 1 },
-  { key: 'fiber',      value: 'fiber',      range: 'fiber',      unit: '%',    decimals: 1 },
-  { key: 'fat',        value: 'fat',        range: 'fat',        unit: '%',    decimals: 1 },
-  { key: 'calcium',    value: 'calcium',    range: 'calcium',    unit: '%',    decimals: 2 },
-  { key: 'phosphorus', value: 'phosphorus', range: 'phosphorus', unit: '%',    decimals: 2 },
-] as const;
-
 /** Bilingual names for the 4 LP modes, used in the "showing X recipe" line. */
 const MODE_LABEL: Record<OptimisationMode, { en: string; ur: string }> = {
   min_cost:    { en: 'Cheapest',    ur: 'سستا' },
@@ -171,13 +39,6 @@ const MODE_LABEL: Record<OptimisationMode, { en: string; ur: string }> = {
   max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین' },
   max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی' },
 };
-
-const UNTARGETED = [
-  { key: 'adf',    value: 'adf',    unit: '%', decimals: 1 },
-  { key: 'starch', value: 'starch', unit: '%', decimals: 1 },
-  { key: 'ash',    value: 'ash',    unit: '%', decimals: 1 },
-  { key: 'dm',     value: 'dm',     unit: '%', decimals: 1 },
-] as const;
 
 export function Step3Formula({
   language,
@@ -211,16 +72,6 @@ export function Step3Formula({
   // Get ranges for selected animal and stage
   const animalRanges = selectedAnimal ? NUTRITION_RANGES[selectedAnimal as keyof typeof NUTRITION_RANGES] : null;
   const ranges = animalRanges ? animalRanges[selectedStage] : null;
-
-  // How many targeted nutrients are currently inside their window — the single
-  // number that answers "is this formula good?" without reading 11 cards.
-  const onTargetCount = ranges
-    ? TARGETED.filter((n) => {
-        const r = ranges[n.range];
-        const v = nutrients[n.value];
-        return v >= r.min && v <= r.max;
-      }).length
-    : 0;
 
   /**
    * Hand-editing a quantity means the numbers on screen are no longer any
@@ -437,58 +288,13 @@ export function Step3Formula({
         </h2>
       </div>
 
-      {/* ── Nutritional summary ──────────────────────────────────────────────
-          Grouped, not interleaved. Previously the 7 nutrients that HAVE a target
-          were mixed in among the 4 that don't (ADF between TDN and Fat, Starch
-          between Fat and DM), so the grid had no readable order and the cards
-          with a status sat next to cards that can't have one. Targets come
-          first — those are the ones you act on — then a labelled divider, then
-          the reference values. */}
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {language === 'en' ? 'Nutrient targets' : 'غذائی اہداف'}
-            </h3>
-            {ranges && (
-              <span className="text-[11px] font-semibold text-slate-400 tabular-nums">
-                {onTargetCount}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {TARGETED.map((n) => (
-              <NutrientCard
-                key={n.key}
-                label={t[n.key]}
-                value={nutrients[n.value]}
-                unit={n.unit}
-                decimals={n.decimals}
-                range={ranges?.[n.range]}
-                language={language}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-            {language === 'en' ? 'Other values (no target set)' : 'دیگر اقدار (کوئی ہدف نہیں)'}
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {UNTARGETED.map((n) => (
-              <NutrientCard
-                key={n.key}
-                label={t[n.key]}
-                value={nutrients[n.value]}
-                unit={n.unit}
-                decimals={n.decimals}
-                language={language}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Shared with Step 4 so the same numbers look the same in both screens. */}
+      <NutrientGrid
+        nutrients={nutrients}
+        ranges={ranges}
+        language={language}
+        untargeted="open"
+      />
 
       <div className="text-xs text-gray-500 -mt-2">
         {language === 'en'

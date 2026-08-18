@@ -5,9 +5,10 @@
 // estimate HOW MUCH OF THIS CONCENTRATE TO FEED per day.
 //
 // This calculator only designs the CONCENTRATE portion of the ration.  We do
-// NOT compute forage / hay quantities — that belongs to a TMR (Total Mixed
-// Ration) tool, which is a v2 feature.  Forage is assumed to be available
-// ad-libitum or per the farmer's existing practice.
+// NOT compute forage / hay quantities — for a complete diet see the TMR
+// calculator (lib/tmrFormulate.ts + components/tmr-calculator/, route /tmr),
+// which has its own DMI-driven feeding guide.  Here, forage is assumed to be
+// available ad-libitum or per the farmer's existing practice.
 //
 // The driver varies by animal type:
 //

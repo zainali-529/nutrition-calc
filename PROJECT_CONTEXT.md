@@ -22,8 +22,8 @@ The app ships **two independent calculators**:
 | 1 | [Step1Animal.tsx](components/nutrition-calculator/Step1Animal.tsx) | Pick animal (6 species) + stage. Shows target nutrient ranges live. Quick-Start template gallery appears above the grid until an animal is picked. |
 | 2 | [Step2Ingredients.tsx](components/nutrition-calculator/Step2Ingredients.tsx) | Multi-select across 5 categories (Energy, Protein, Bran & Fiber, Fats & Oils, Supplements & Minerals). **Runs a live LP feasibility check on every toggle** and renders a bilingual "what's off / quick fix" guide. `+ Add Ingredient` opens the custom-ingredient form. |
 | 3 | [Step3Formula.tsx](components/nutrition-calculator/Step3Formula.tsx) | **The core editor.** Nutrient grid split into *targets* (7, with status) and *other values* (4, informational) plus an "N/7 on target" counter. 4 Auto-Formulate mode buttons; the active one is filled + check-badged and named in the panel text. Adjust kg/price per row, per-row lock + edit-nutrition pencil. Editable Total Weight + batch chips scale proportionally. |
-| 4 | [Step4Status.tsx](components/nutrition-calculator/Step4Status.tsx) | Nutrient grid vs targets (color-coded), Daily Feeding Guide card, and per-nutrient recommendations. |
-| 5 | [Step5Actions.tsx](components/nutrition-calculator/Step5Actions.tsx) | Save / WhatsApp share / **print (or save-as-PDF)** / text export / reset. |
+| 4 | [Step4Status.tsx](components/nutrition-calculator/Step4Status.tsx) | Verdict pill ("All targets met" / "N/7 on target"), the **same** nutrient grid as Step 3, a "What to fix" list of **only** the off-target nutrients, and the Daily Feeding Guide. |
+| 5 | [Step5Actions.tsx](components/nutrition-calculator/Step5Actions.tsx) | Slim "Formula ready" header, summary with batch / cost-per-kg / total / targets-met, then tiered actions: **Save** (primary, becomes a sticky "Saved"), a row of WhatsApp / Print-PDF / Text-file, and a separated reset. Fits one phone screen. |
 
 Header icons: **Help** → [GlossaryModal.tsx](components/nutrition-calculator/GlossaryModal.tsx) (9 bilingual nutrient explainers), **TMR** → `/tmr`, **Bookmark** → [SavedFormulasModal.tsx](components/nutrition-calculator/SavedFormulasModal.tsx), **EN/UR** toggle. A first-run [OnboardingModal.tsx](components/nutrition-calculator/OnboardingModal.tsx) — one welcome screen with 4 feature cards — auto-shows once, gated on a localStorage flag.
 
@@ -82,6 +82,7 @@ d:/test/nutrition-calc/
 │   │   ├── IngredientTooltip.tsx           hover tooltip on ingredient cards
 │   │   ├── SavedFormulasModal.tsx          saved concentrate formulas: load / delete
 │   │   ├── NutritionConflictModal.tsx      saved-vs-current nutrition mismatch resolver
+│   │   ├── NutrientGrid.tsx               SHARED nutrient cards + grid (Steps 3 & 4)
 │   │   ├── WhyThisFormula.tsx              post-solve LP diagnostics card
 │   │   ├── DailyFeedingGuide.tsx           daily concentrate intake (Step 4)
 │   │   ├── PrintableRecipe.tsx             print-only recipe sheet (screen-hidden)
@@ -432,13 +433,44 @@ States: `pending` (category minimums unmet) → `no_targets` (Step 1 incomplete)
 - **The numbers are demoted** into a collapsed `<details>` labelled "Why? (show numbers)" — available, never in the way.
 - **Never show advice the user can't act on.** The old panel promised "here's what's off" and then printed generic filler ("pick an ingredient that is strong in the nutrient you are missing, or remove one that is overloading another"), which happened whenever `hardBlockers`, `conflictingNutrients`, and `suggestedAdditions` were all empty. `buildFixes()` is guaranteed non-empty, so that dead end is gone.
 
-**Step 3's nutrient grid** ([Step3Formula.tsx](components/nutrition-calculator/Step3Formula.tsx)) follows the same "don't shout at the user" principle:
+### The nutrient grid is shared — [NutrientGrid.tsx](components/nutrition-calculator/NutrientGrid.tsx)
 
-- **Two ordered groups, never interleaved.** `TARGETED` (the 7 nutrients the LP constrains) then `UNTARGETED` (ADF, Starch, Ash, DM — no min/max to compare against). Previously they were mixed, so ADF sat between TDN and Fat and the grid had no readable order. Both lists carry their label key, value key and range key in one row so a label can't drift off its value.
+Steps 3 and 4 render the same seven numbers, and they used to do it in two different visual languages (Step 3 with range bars, Step 4 with green tick tiles), duplicating the label strings and the ordering. One component now owns all of it: `TARGETED`, `UNTARGETED`, `countOnTarget()`, `NutrientCard`, `NutrientGrid`.
+
+- **Two ordered groups, never interleaved.** `TARGETED` (the 7 the LP constrains) then `UNTARGETED` (ADF, Starch, Ash, DM — no min/max to compare against). Previously they were mixed, so ADF sat between TDN and Fat and the grid had no readable order. Each row carries its label, value key and range key together so a label can't drift off its value.
 - **No solid fill for "in range".** A saturated green card made every *passing* nutrient the loudest thing on screen, when the ones needing attention are the failures. Status is a small dot + tinted border + coloured value; emerald / amber / rose come from `getNutrientStatus()`.
 - **A mini range bar per targeted nutrient** — the target band with a marker for where the formula actually sits, clamped at the ends. "20–22%" alone doesn't say whether you're centred or clinging to the edge.
 - **An `N/7 on target` counter**, so the whole grid can be judged without reading 11 cards.
-- **The active LP mode is visible**: filled + ringed + check badge, `aria-pressed`, and named in the panel ("Showing the **Balanced** recipe"). Hand-editing a kg calls `clearSolveState()`, which drops both the badge and the diagnostics card — labelling a hand-tuned recipe "Balanced" would be untrue.
+- **`untargeted` prop**: `'open'` in Step 3 (the extra numbers help while tuning), `'collapsed'` in Step 4 (on a phone they'd only add scroll).
+
+**Step 4 shows advice only where advice is needed.** `generateRecommendations()` returns a row for all seven nutrients, and for a passing one it reads "Protein (CP) is within optimal range" — which the card directly above already showed with a green dot and an "on target" label. Rendering all seven made the screen state everything twice and doubled the scrolling on a phone for zero information. Step 4 now filters to `status !== 'success'`, sorts errors before warnings, and collapses the passing case into a single line. Measured on a 390 px viewport: 2.06 screens when everything passes, 2.56 when six nutrients are off.
+
+**The active LP mode is visible in Step 3**: filled + ringed + check badge, `aria-pressed`, and named in the panel ("Showing the **Balanced** recipe"). Hand-editing a kg calls `clearSolveState()`, which drops both the badge and the diagnostics card — labelling a hand-tuned recipe "Balanced" would be untrue.
+
+### The "I already have my own mix" escape hatch
+
+Two different users reach Step 2, and the validation that helps one blocks the other:
+
+- Someone **building a ration from scratch** benefits from "you have no protein source yet".
+- Someone who **already feeds a fixed mix** and only wants to know whether it hits the targets does not. For them the category minimums (`energy: 1`, `protein: 1`) were a dead end — Next stayed disabled with no way past it.
+
+`skipValidation` unlocks Next for any non-empty selection. Behaviour when on:
+
+| | Normal | Checks skipped |
+|---|---|---|
+| Next gate | LP verdict is `feasible` | at least 1 ingredient anywhere |
+| Step 2 panel | LP feasibility guide + fix chips | "Checks skipped" notice + "Turn checks back on" |
+| Toast on Next | warns if infeasible | silent — they already accepted the trade-off |
+| Step 3 on arrival | auto-runs the Balanced LP | **no** auto-run; even split to hand-edit |
+| Step 4 | full verdict | full verdict (unchanged — this is what they came for) |
+
+Three implementation points that are easy to get wrong:
+
+1. **One source of truth for "can the user continue?"** `canProceed` is derived from the LP verdict — `feasibility.kind === 'feasible'`, the state that renders "Looks good — you're ready". There is deliberately **no** separate "category minimums satisfied" flag. There used to be, and because the minimums only ask "at least one energy and one protein source?", picking corn + SBM unlocked Next while the panel directly above it still said the targets couldn't be met — and Auto-Formulate then failed on arrival in Step 3. The `pending` feasibility state already encodes the minimums, so the second flag was both redundant and contradictory.
+2. **The flag lives in `NutritionCalculator`, not Step 2.** `AnimatePresence` unmounts each step on navigation, so as local state it would reset the moment the user went to Step 3 and came back — silently re-locking the button they had just unlocked.
+3. **Step 3's auto-balance is suppressed** (`if (wasEmpty && !skipValidation)`). Their selection is deliberately their own mix, so the Balanced LP is usually infeasible and would greet them with a red error immediately after we promised they'd "only lose the automatic balancing".
+
+The skip offer renders on `!canProceed` — the same condition that disables Next — so there is never a state with a locked button and no way past it. The disabled Next also names its own reason, differently for each blocked state.
 
 **Ingredient card affordances** ([Step2Ingredients.tsx](components/nutrition-calculator/Step2Ingredients.tsx)):
 
@@ -529,6 +561,7 @@ forage_DM   = DMI_kg × forageDmPct/100 ;  concentrate_DM = remainder
 | Conflict detection on load | ✅ | concentrate only; forage values aren't editable yet |
 | Quick-Start templates | ✅ | 9 curated recipes → straight to Step 3 |
 | Live LP feasibility check in Step 2 | ✅ | both calculators, with bilingual quick-fix guidance |
+| Skip-validation escape hatch | ✅ | concentrate Step 2 — for users who just want an existing mix checked |
 | LP Auto-Formulate: min-cost | ✅ | |
 | LP Auto-Formulate: balanced (midpoint-seeking) | ✅ | auto-runs on fresh Step 3 entry |
 | LP Auto-Formulate: max-protein / max-energy | ✅ | with cost premium vs min-cost baseline |
@@ -537,7 +570,7 @@ forage_DM   = DMI_kg × forageDmPct/100 ;  concentrate_DM = remainder
 | Max inclusion caps + "why this cap?" in EN + UR | ✅ | all 40 ingredients + all 12 forages |
 | Daily feeding guide | ✅ | concentrate allowance + TMR DMI variant |
 | Print / save-as-PDF recipe sheet | ✅ | concentrate only, via @media print |
-| WhatsApp / text export | ✅ | both calculators |
+| WhatsApp / text export | ✅ | both calculators. The concentrate Step 5 labels these honestly — "Print / PDF" is the print-dialog path, "Text file" writes `.txt`. It used to call the `.txt` button "Download PDF". |
 | Onboarding welcome screen + nutrient glossary | ✅ | 4 feature cards, 9 glossary entries |
 | Batch size scaling + quick presets | ✅ | 100 / 200 / 500 / 1000 / 2000 kg |
 | Why-this-formula for TMR | ❌ | TMR has no post-solve diagnostics card |
@@ -612,15 +645,12 @@ Cap reasons cite these implicitly — gossypol (cottonseed), glucosinolates (mus
 
 Small things that are true of the code today and worth knowing before you touch them:
 
-1. **Step 1's banner still says "(TMR support coming soon.)"** — see [Step1Animal.tsx](components/nutrition-calculator/Step1Animal.tsx). `/tmr` shipped; the copy didn't get updated.
-2. **[feedingGuide.ts](lib/feedingGuide.ts)'s header comment calls TMR "a v2 feature"** — same stale framing.
-3. **Step 5's text-export button is labelled "Download PDF"** but writes a `.txt` file. The separate "Print Recipe" button is the real PDF path.
-4. **Four orphan modules**: `Header.tsx`, `ProgressIndicator.tsx`, `Step2IngredientsPro.tsx`, `theme-provider.tsx`, plus the `hooks/` directory and `styles/globals.css`. Nothing imports any of them.
-5. **`Step3Formula` special-cases a `'mineral_mix'` key** (hides the remove button) that no longer exists in `INGREDIENTS`.
-6. **TMR has no conflict-detection path on load** even though `SavedTmrFormula` stores an `ingredientOverrides` snapshot for it.
-7. **`OnboardingModal`'s docstring claims it's "re-openable from the Help icon"** — it isn't. The Help icon opens the Glossary in both orchestrators, so once `has_seen_onboarding_v1` is set there's no in-app way back to the welcome screen.
+1. **Four orphan modules**: `Header.tsx`, `ProgressIndicator.tsx`, `Step2IngredientsPro.tsx`, `theme-provider.tsx`, plus the `hooks/` directory and `styles/globals.css`. Nothing imports any of them.
+2. **`Step3Formula` special-cases a `'mineral_mix'` key** (hides the remove button) that no longer exists in `INGREDIENTS`.
+3. **TMR has no conflict-detection path on load** even though `SavedTmrFormula` stores an `ingredientOverrides` snapshot for it.
+4. **`OnboardingModal`'s docstring claims it's "re-openable from the Help icon"** — it isn't. The Help icon opens the Glossary in both orchestrators, so once `has_seen_onboarding_v1` is set there's no in-app way back to the welcome screen.
 
-8. **Four Quick-Start templates are LP-infeasible** — `dairy_cow_mid_15l` (the "Most popular" card), `dairy_cow_dry`, `dairy_buffalo_10l`, and `heifer_growing`. Tapping one lands the user on Step 3 where Auto-Formulate fails in all 4 modes. `npx tsx scripts/verify-templates.ts` reports them (currently 20 passed / 16 failed).
+5. **Four Quick-Start templates are LP-infeasible** — `dairy_cow_mid_15l` (the "Most popular" card), `dairy_cow_dry`, `dairy_buffalo_10l`, and `heifer_growing`. Tapping one lands the user on Step 3 where Auto-Formulate fails in all 4 modes. `npx tsx scripts/verify-templates.ts` reports them (currently 20 passed / 16 failed).
 
    Root cause for three of them is a **phosphorus-vs-fibre conflict**: reaching the NDF floor on wheat bran + CSM (1.1% and 1.0% P) pushes phosphorus past its ceiling. Adding a low-P fibre source fixes them — verified that `chickpea_husk` (55% NDF at only 0.25% P) makes `dairy_cow_mid_15l`, `dairy_buffalo_10l`, and `heifer_growing` feasible in all 4 modes. `dairy_cow_dry` needs at least two constraints relaxed and wants a separate look.
 

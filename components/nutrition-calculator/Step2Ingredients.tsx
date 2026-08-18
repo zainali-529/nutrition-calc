@@ -11,7 +11,10 @@ import {
 import { isCustomIngredient, removeCustomIngredient } from '@/lib/customIngredients';
 import { Button } from '@/components/ui/button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronRight, Info, Plus, Sparkles, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle, CheckCircle2, ChevronRight, ClipboardCheck, Info, Plus,
+  SkipForward, Sparkles, Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { IngredientDetailModal } from './IngredientDetailModal';
 import { AddIngredientModal } from './AddIngredientModal';
@@ -32,6 +35,9 @@ interface Step2IngredientsProps {
   onIngredientToggle: (category: string, ingredient: string) => void;
   onNext: () => void;
   onBack: () => void;
+  /** When true, the per-category minimums no longer gate the Next button. */
+  skipValidation: boolean;
+  onSkipValidationChange: (v: boolean) => void;
 }
 
 /**
@@ -750,6 +756,93 @@ function GapColumn({
   );
 }
 
+/**
+ * The "I already have my own mix" escape hatch.
+ *
+ * Two distinct users hit this screen. One is building a ration from scratch and
+ * genuinely benefits from being told "you have no protein source yet". The other
+ * already feeds a fixed mix and only wants to know whether it meets the targets —
+ * for them the category minimums are an obstacle, not help, and they were simply
+ * stuck with a disabled Next button and no way past it.
+ *
+ * The trade-off is stated plainly rather than hidden: nutrition is still
+ * calculated (that's the whole point of their visit), but Auto-Formulate may not
+ * be able to balance the mix.
+ */
+function SkipValidationOffer({
+  language,
+  onSkip,
+}: {
+  language: 'en' | 'ur';
+  onSkip: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-slate-200 bg-slate-50 p-3.5"
+    >
+      <div className="flex items-start gap-2.5">
+        <ClipboardCheck className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-bold text-slate-800">
+            {language === 'en'
+              ? 'Already have your own mix?'
+              : 'آپ کے پاس پہلے سے اپنا فارمولا ہے؟'}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">
+            {language === 'en'
+              ? 'Pick just the ingredients you already feed and continue. We will still calculate the nutrition and show you which targets are met — you only lose the automatic balancing.'
+              : 'صرف وہی اجزاء منتخب کریں جو آپ پہلے سے دیتے ہیں اور آگے بڑھیں۔ ہم پھر بھی غذائیت کا حساب کریں گے اور بتائیں گے کون سے اہداف پورے ہوئے — صرف خودکار توازن دستیاب نہیں ہوگا۔'}
+          </p>
+          <button
+            onClick={onSkip}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition-colors tap-transparent"
+          >
+            <SkipForward className="w-3.5 h-3.5" />
+            {language === 'en' ? 'Skip checks and continue' : 'جانچ چھوڑ کر آگے بڑھیں'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Persistent reminder that the checks are off, with a way back on. */
+function SkipValidationActive({
+  language,
+  onResume,
+}: {
+  language: 'en' | 'ur';
+  onResume: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-slate-300 bg-white p-3.5 flex items-start gap-2.5"
+    >
+      <ClipboardCheck className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-bold text-slate-800">
+          {language === 'en' ? 'Checks skipped — using your own mix' : 'جانچ چھوڑ دی گئی — آپ کا اپنا فارمولا'}
+        </p>
+        <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">
+          {language === 'en'
+            ? 'Pick your ingredients and tap Next. Step 3 lets you type your own kg amounts, and Step 4 shows exactly which nutrients are on or off target.'
+            : 'اپنے اجزاء منتخب کر کے Next دبائیں۔ مرحلہ 3 میں اپنی مقدار لکھیں، اور مرحلہ 4 بتائے گا کون سے اجزاء ہدف پر ہیں۔'}
+        </p>
+        <button
+          onClick={onResume}
+          className="mt-2 text-xs font-bold text-emerald-700 hover:text-emerald-900 underline underline-offset-2 tap-transparent"
+        >
+          {language === 'en' ? 'Turn checks back on' : 'جانچ دوبارہ چالو کریں'}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 export function Step2Ingredients({
   language,
   chosenIngredients,
@@ -758,6 +851,8 @@ export function Step2Ingredients({
   onIngredientToggle,
   onNext,
   onBack,
+  skipValidation,
+  onSkipValidationChange,
 }: Step2IngredientsProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedIngredientInfo, setSelectedIngredientInfo] = useState<string | null>(null);
@@ -770,10 +865,11 @@ export function Step2Ingredients({
   const [customVersion, setCustomVersion] = useState(0);
   const refreshCustom = useCallback(() => setCustomVersion((v) => v + 1), []);
 
-  const isComplete = Object.entries(chosenIngredients).every(([category, selected]) => {
-    const cat = INGREDIENT_CATEGORIES[category as keyof typeof INGREDIENT_CATEGORIES];
-    return !cat || selected.length >= cat.min;
-  });
+  // NOTE: there is deliberately no separate "category minimums satisfied" flag.
+  // The feasibility check's `pending` state already encodes exactly that
+  // condition, and having two sources of truth for "can the user continue?" is
+  // what let Next unlock while the panel said the targets couldn't be met.
+  const totalSelected = Object.values(chosenIngredients).flat().length;
 
   /**
    * Delete a user-added custom ingredient. Three side-effects, in order:
@@ -864,6 +960,26 @@ export function Step2Ingredients({
     return () => clearTimeout(handle);
   }, [feasibility.kind, language]);
 
+  /**
+   * When may the user advance to Step 3?
+   *
+   * The gate is the LP verdict, not just the per-category minimums. Those
+   * minimums only ask "is there at least one energy and one protein source?",
+   * which 1 energy + 1 protein satisfies — so Next used to unlock while the
+   * panel directly above it still said the targets can't be met. The button and
+   * the message contradicted each other, and Auto-Formulate would then fail on
+   * arrival in Step 3.
+   *
+   * Now Next unlocks only in the `feasible` state — the one that reads "Looks
+   * good — you're ready". Every other state keeps it locked and offers the skip
+   * hatch, so nobody is ever stuck without a way forward.
+   */
+  const canProceed = skipValidation
+    // Checks off: any non-empty selection will do. An empty one would just land
+    // the user on a blank Step 3.
+    ? totalSelected > 0
+    : feasibility.kind === 'feasible';
+
   // Keys the solver recommends right now — drives the "ADD THIS" card treatment
   // and the per-section "N suggested" badge.
   const recommendedKeys = useMemo(
@@ -877,16 +993,21 @@ export function Step2Ingredients({
     back: language === 'en' ? 'Back' : 'واپس',
   };
 
-  const handleNext = () => {
-    if (feasibility.kind === 'infeasible') {
-      toast.warning(
-        language === 'en'
-          ? "Your selection can't meet the targets — Auto-Formulate will fail in Step 3."
-          : 'یہ انتخاب اہداف پورے نہیں کر سکتا — مرحلہ 3 میں آٹو فارمولیٹ ناکام ہوگا۔',
-        { id: 'feasibility-status', duration: 5000 }
-      );
-    }
-    onNext();
+  /**
+   * No infeasibility warning to give here any more: with validation on, Next is
+   * disabled unless the selection is feasible, and with validation off the user
+   * has already accepted that Auto-Formulate may not balance their mix.
+   */
+  const handleNext = () => onNext();
+
+  const handleSkip = () => {
+    onSkipValidationChange(true);
+    toast.success(
+      language === 'en'
+        ? 'Checks turned off — pick your own ingredients and tap Next.'
+        : 'جانچ بند کر دی گئی — اپنے اجزاء منتخب کر کے Next دبائیں۔',
+      { id: 'skip-validation', duration: 4000 }
+    );
   };
 
   return (
@@ -939,11 +1060,30 @@ export function Step2Ingredients({
           </Button>
         </div>
 
-        <FeasibilityGuide
-          language={language}
-          status={feasibility}
-          onAddIngredient={onIngredientToggle}
-        />
+        {/* When checks are off, the diagnostic panel is replaced by the
+            "checks skipped" notice. The gap analysis still lives in Step 4,
+            which is where this user wants it — as a verdict on their own mix,
+            not as a gate in front of it. */}
+        {skipValidation ? (
+          <SkipValidationActive
+            language={language}
+            onResume={() => onSkipValidationChange(false)}
+          />
+        ) : (
+          <>
+            <FeasibilityGuide
+              language={language}
+              status={feasibility}
+              onAddIngredient={onIngredientToggle}
+            />
+            {/* Offer the escape hatch whenever the user is blocked — keyed off
+                the same condition that disables Next, so there is never a state
+                with a locked button and no way past it. */}
+            {!canProceed && (
+              <SkipValidationOffer language={language} onSkip={handleSkip} />
+            )}
+          </>
+        )}
 
         {/* Re-keyed by customVersion so newly-added ingredients appear immediately. */}
         <div className="space-y-8" key={customVersion}>
@@ -964,16 +1104,40 @@ export function Step2Ingredients({
         </div>
 
         {/* Sticky bottom guidance — visible right next to the Next button */}
-        <FeasibilityGuide language={language} status={feasibility} compact />
+        {!skipValidation && (
+          <FeasibilityGuide language={language} status={feasibility} compact />
+        )}
+
+        {/* Why Next is locked, so the disabled button is never a mystery.
+            Each blocked state names its own reason. */}
+        {!canProceed && (
+          <p className="text-[11px] text-slate-500">
+            {skipValidation
+              ? (language === 'en'
+                  ? 'Select at least one ingredient to continue.'
+                  : 'آگے بڑھنے کے لیے کم از کم ایک جزو منتخب کریں۔')
+              : feasibility.kind === 'infeasible'
+                ? (language === 'en'
+                    ? 'Next unlocks when your ingredients can meet every target — add one of the suggestions above, or skip the checks.'
+                    : 'جب آپ کے اجزاء تمام اہداف پورے کر سکیں تو Next کھل جائے گا — اوپر دی گئی تجویز شامل کریں، یا جانچ چھوڑ دیں۔')
+                : feasibility.kind === 'no_targets'
+                  ? (language === 'en'
+                      ? 'Pick an animal and stage in Step 1 first, or skip the checks.'
+                      : 'پہلے مرحلہ 1 میں جانور اور مرحلہ منتخب کریں، یا جانچ چھوڑ دیں۔')
+                  : (language === 'en'
+                      ? 'Keep picking — Next unlocks once your selection can meet the targets.'
+                      : 'منتخب کرتے رہیں — ہدف پورے ہونے پر Next کھل جائے گا۔')}
+          </p>
+        )}
 
         {/* Action Buttons — taller tap targets on mobile (min 48 px) */}
-        <div className="flex gap-3 pt-6 sm:pt-8">
+        <div className="flex gap-3 pt-4 sm:pt-6">
           <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
             {t.back}
           </Button>
           <Button
             onClick={handleNext}
-            disabled={!isComplete}
+            disabled={!canProceed}
             className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
           >
             {t.next}

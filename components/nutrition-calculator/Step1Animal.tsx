@@ -139,9 +139,10 @@ export function Step1Animal({
     selectStage:  language === 'en' ? 'Select Production Stage' : 'پیداواری مرحلہ منتخب کریں',
     next:         language === 'en' ? 'Next' : 'اگلا',
     back:         language === 'en' ? 'Back' : 'واپس',
+    // The TMR calculator has shipped (/tmr) — this used to say "coming soon".
     concentrateBanner: language === 'en'
-      ? 'Building a CONCENTRATE mix — fed with fresh forage, hay, or silage. (TMR support coming soon.)'
-      : 'آپ ایک کانسنٹریٹ فارمولا بنا رہے ہیں — سبز چارہ، گھاس یا سائیلج کے ساتھ دیا جاتا ہے۔',
+      ? 'Building a CONCENTRATE mix — fed with fresh forage, hay, or silage. For a complete diet, use the TMR calculator in the header.'
+      : 'آپ ایک کانسنٹریٹ فارمولا بنا رہے ہیں — سبز چارہ، گھاس یا سائیلج کے ساتھ۔ مکمل راشن کے لیے اوپر TMR کیلکولیٹر استعمال کریں۔',
   };
 
   return (

@@ -78,6 +78,21 @@ export function NutritionCalculator() {
     emptyChosenIngredients
   );
 
+  /**
+   * "I already have my own mix" escape hatch for Step 2.
+   *
+   * Step 2 normally requires at least one energy source and one protein source
+   * before Next unlocks. That's right for someone building a ration from
+   * scratch, but it traps the other kind of user: a farmer who already feeds a
+   * fixed mix and only wants to know whether it hits the targets. When this is
+   * on, Next unlocks with any non-empty selection.
+   *
+   * Lives here rather than inside Step 2 because `AnimatePresence` unmounts each
+   * step on navigation — as local state it would reset the moment the user went
+   * to Step 3 and came back, re-locking the button they just unlocked.
+   */
+  const [skipValidation, setSkipValidation] = useState(false);
+
   // Step 3 State
   const [formula, setFormula] = useState<FormulaItem[]>([]);
 
@@ -169,12 +184,17 @@ export function NutritionCalculator() {
     if (currentStep === 1) {
       const wasEmpty = formula.length === 0;
       setFormula((prev) => mergeFormulaWithSelection(prev, chosenIngredients));
-      if (wasEmpty) setAutoBalanceOnMount(true);
+      // Skip the auto-balance when the user opted out of the checks. Their
+      // selection is deliberately their own mix, so the Balanced LP would very
+      // likely be infeasible and greet them with a red error on arrival — right
+      // after we told them they'd only lose the automatic balancing. They get
+      // the even starting split to edit by hand instead.
+      if (wasEmpty && !skipValidation) setAutoBalanceOnMount(true);
     }
 
     setCompletedSteps((prev) => [...new Set([...prev, currentStep])]);
     setCurrentStep((prev) => Math.min(prev + 1, 4));
-  }, [currentStep, chosenIngredients, formula.length]);
+  }, [currentStep, chosenIngredients, formula.length, skipValidation]);
 
   const handleBackStep = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -250,6 +270,7 @@ export function NutritionCalculator() {
     setSelectedStage(0);
     setChosenIngredients(emptyChosenIngredients());
     setFormula([]);
+    setSkipValidation(false);
     // Re-enable auto-balance for the next session
     setAutoBalanceOnMount(false);
   }, []);
@@ -430,6 +451,8 @@ export function NutritionCalculator() {
                   onIngredientToggle={handleIngredientToggle}
                   onNext={handleNextStep}
                   onBack={handleBackStep}
+                  skipValidation={skipValidation}
+                  onSkipValidationChange={setSkipValidation}
                 />
               )}
               {currentStep === 2 && (
