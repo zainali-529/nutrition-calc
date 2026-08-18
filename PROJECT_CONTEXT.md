@@ -23,7 +23,7 @@ The app ships **two independent calculators**:
 | 2 | [Step2Ingredients.tsx](components/nutrition-calculator/Step2Ingredients.tsx) | Multi-select across 5 categories (Energy, Protein, Bran & Fiber, Fats & Oils, Supplements & Minerals). **Runs a live LP feasibility check on every toggle** and renders a bilingual "what's off / quick fix" guide. `+ Add Ingredient` opens the custom-ingredient form. |
 | 3 | [Step3Formula.tsx](components/nutrition-calculator/Step3Formula.tsx) | **The core editor.** Nutrient grid split into *targets* (7, with status) and *other values* (4, informational) plus an "N/7 on target" counter. 4 Auto-Formulate mode buttons; the active one is filled + check-badged and named in the panel text. Adjust kg/price per row, per-row lock + edit-nutrition pencil. Editable Total Weight + batch chips scale proportionally. |
 | 4 | [Step4Status.tsx](components/nutrition-calculator/Step4Status.tsx) | Verdict pill ("All targets met" / "N/7 on target"), the **same** nutrient grid as Step 3, a "What to fix" list of **only** the off-target nutrients, and the Daily Feeding Guide. |
-| 5 | [Step5Actions.tsx](components/nutrition-calculator/Step5Actions.tsx) | Slim "Formula ready" header, summary with batch / cost-per-kg / total / targets-met, then tiered actions: **Save** (primary, becomes a sticky "Saved"), a row of WhatsApp / Print-PDF / Text-file, and a separated reset. Fits one phone screen. |
+| 5 | [Step5Actions.tsx](components/nutrition-calculator/Step5Actions.tsx) | Slim "Formula ready" header, summary with batch / cost-per-kg / total / targets-met, a **See background calculation** sheet, then tiered actions: **Save** (primary, becomes a sticky "Saved"), a row of WhatsApp / Print-PDF / Text-file, and a separated reset. Fits one phone screen. |
 
 Header icons: **Help** → [GlossaryModal.tsx](components/nutrition-calculator/GlossaryModal.tsx) (9 bilingual nutrient explainers), **TMR** → `/tmr`, **Bookmark** → [SavedFormulasModal.tsx](components/nutrition-calculator/SavedFormulasModal.tsx), **EN/UR** toggle. A first-run [OnboardingModal.tsx](components/nutrition-calculator/OnboardingModal.tsx) — one welcome screen with 4 feature cards — auto-shows once, gated on a localStorage flag.
 
@@ -83,6 +83,7 @@ d:/test/nutrition-calc/
 │   │   ├── SavedFormulasModal.tsx          saved concentrate formulas: load / delete
 │   │   ├── NutritionConflictModal.tsx      saved-vs-current nutrition mismatch resolver
 │   │   ├── NutrientGrid.tsx               SHARED nutrient cards + grid (Steps 3 & 4)
+│   │   ├── CalculationBreakdownModal.tsx  "See background calculation" sheet (print/PDF + text)
 │   │   ├── WhyThisFormula.tsx              post-solve LP diagnostics card
 │   │   ├── DailyFeedingGuide.tsx           daily concentrate intake (Step 4)
 │   │   ├── PrintableRecipe.tsx             print-only recipe sheet (screen-hidden)
@@ -301,9 +302,41 @@ Total Energy Mcal/kg = SUM(Energy_Mcalᵢ) / Total DM
 Per-kg Price         = SUM(qtyᵢ × priceᵢ) / SUM(qtyᵢ)   ← as-fed basis
 ```
 
-**Verified by [scripts/verify-calculator.mjs](scripts/verify-calculator.mjs)** against the reference Google Sheet — all 15 values match exactly, plus a scale-invariance test proving percentages don't change when all quantities double.
+**`calculateNutrients` is a thin wrapper over `buildCalculationTrace`** — one implementation, not two. See §5b.
+
+**Verified twice over:**
+- [scripts/verify-calculator.mjs](scripts/verify-calculator.mjs) — all 15 values against the reference Google Sheet, plus scale invariance. ⚠️ Note this script *re-implements* the maths inline with its own copy of the ingredient data, so it does **not** catch a regression in the shipped code.
+- [scripts/verify-calculation-trace.ts](scripts/verify-calculation-trace.ts) — imports the **real** `lib/calculations.ts` and asserts the sheet reference through the actual code path, so regressions do surface. 56 assertions.
 
 `TmrNutrientCalculation` additionally reports `forageDmKg`, `concentrateDmKg`, `forageDmShare`, and `concentrateDmShare` (fractions of total DM).
+
+### The calculation trace — "See background calculation"
+
+Step 5 has a **See background calculation** action ([CalculationBreakdownModal.tsx](components/nutrition-calculator/CalculationBreakdownModal.tsx)) that shows the farmer every step of the maths with real numbers substituted. It exists so users can *learn the method* rather than trust a black box.
+
+**Two export formats, and deliberately not CSV.** A CSV was the first implementation and was wrong for this audience: on a phone it opens in nothing, or in a spreadsheet app that mangles a 22-column table, and it can't be read as a document or pasted into WhatsApp.
+- **Print / Save as PDF** — a separate print-only `.printable-calc` block, rebuilt as plain black-on-white with real table borders, because the on-screen design (tinted borders, sticky first column, horizontal scroll) does not survive being flattened onto A4. Fits one page.
+- **Save as text** — laid out as readable *blocks*, not a wide table: a 22-column grid cannot survive a 40-character screen, but `Corn: 33.40 kg → 29.7260 kg DM` reads fine anywhere, including in a chat message. Prose is word-wrapped to 44 columns; longest line is 46 chars.
+
+**One implementation, not two.** `buildCalculationTrace(formula)` in [calculations.ts](lib/calculations.ts) does the per-ingredient work and keeps every intermediate value; `calculateNutrients` is a thin wrapper that only rounds its totals. Re-deriving the arithmetic inside the modal would risk an explanation that quietly disagrees with the result it claims to explain — teaching users something false, which is worse than showing nothing. The CSV is built from the same trace, so file and screen cannot diverge either.
+
+```ts
+buildCalculationTrace(formula) → {
+  rows:   TraceRow[]   // per ingredient: qty, dmPct, dmKg, pct{}, kg{}, meMcal, cost
+  totals: { qty, dmKg, kg{}, meMcal, cost }
+  raw:    { pct{}, mePerKgDm, dmPct, perKgPrice }   // unrounded
+}
+```
+
+The sheet walks: **the rule** (4 formulas) → a **worked example** on the heaviest row → **steps 1&2** as a per-ingredient table with a totals row → **step 3** showing `Σ kg ÷ Σ DM kg × 100` per nutrient with target and pass/fail → **steps 4 & 5** for energy and cost.
+
+**Three display rules, each fixing a "these numbers don't match" report:**
+
+1. **`NUTRIENT_DP` in [calculations.ts](lib/calculations.ts) is the single definition of display precision**, used by both the Step 3/4 cards and this sheet. They used to disagree — a card printed CP as `23.7%` while the sheet printed the same number as `23.71%` (1 dp vs 2 dp). Nothing was wrong, but a user comparing two screens reasonably reads that as the calculator contradicting itself, which is fatal for a feature whose job is to be trusted. The values match `calculateNutrients`' own rounding, so nothing is hidden.
+2. **Equation operands and table kg cells print at 4 decimals** (`eq()`). At 2 dp the DM% line read `89.31 ÷ 99.99 × 100 = 89.31%` — but a calculator gives 89.32, because the operands were display-rounded while the answer used full precision. The kg columns had the same problem: rows at 2 dp summed to `88.3400` against a stated total of `88.3340`, so the column visibly didn't add up.
+3. **The residual rounding gap is stated, not hidden.** `Σ round(xᵢ)` is not always `round(Σ xᵢ)`, so a hand-added column can still land ±0.0001 from the total. A footnote says exactly that, and notes the totals come from unrounded values — which is why the totals, not the rows, are what Step 3 divides.
+
+Statuses read **above target / below target**, matching the card wording for the same nutrient rather than a flat "off target".
 
 ### Step 2 → Step 3 handoff
 
@@ -535,7 +568,11 @@ forage_DM   = DMI_kg × forageDmPct/100 ;  concentrate_DM = remainder
 
 14. **Edit [app/globals.css](app/globals.css), not `styles/globals.css`** — the latter is an orphan nothing imports.
 
-15. **Printing works by visibility inversion.** `@media print` in globals.css hides `body *` then re-shows only `.printable-recipe` and its descendants. `PrintableRecipe` is rendered permanently at the bottom of Step 5 as `hidden print:block`; `window.print()` is what surfaces it. There is no PDF library — "Save as PDF" is the browser's own print-dialog option.
+15. **Printing works by visibility inversion, with TWO mutually-exclusive targets.** `@media print` in globals.css hides `body *`, then re-shows only `.printable-recipe`. There is no PDF library — "Save as PDF" is the browser's own print-dialog option.
+
+    Because the recipe sheet is always in the DOM, simply adding `.printable-calc` to that show-list would print **both** sheets whichever button was pressed. So the calculation sheet's handler sets `document.body.dataset.printing = 'calc'` first, which swaps which one is visible, and clears it after ~500 ms so the default target stays the recipe. If you add a third print target, follow the same pattern rather than extending the show-list.
+
+    ⚠️ **Turbopack can serve stale compiled CSS after editing `globals.css`.** A print rule that is definitely in the file can be absent from the served stylesheet, with no error anywhere — it presents as the selector simply not matching. If print behaviour doesn't change after a CSS edit, stop the dev server, delete `.next`, and restart before debugging the CSS itself.
 
 16. **Adding a new *category*** is a 3-step change, not 1: extend the `IngredientCategory` union, add a block to `INGREDIENT_CATEGORIES`, and add the key to `CATEGORY_KEYS`. Everything that iterates (Step 2 sections, `buildFormula`, `emptyChosenIngredients`, TMR's concentrate tab, `verify-templates`) is driven off `CATEGORY_KEYS` and follows automatically. Also add the bucket to `ChosenIngredients` in [templates.ts](lib/templates.ts). **Never hardcode `['energy','protein','fiber','fat']`** — that's exactly how a category gets silently dropped.
 
@@ -570,6 +607,8 @@ forage_DM   = DMI_kg × forageDmPct/100 ;  concentrate_DM = remainder
 | Max inclusion caps + "why this cap?" in EN + UR | ✅ | all 40 ingredients + all 12 forages |
 | Daily feeding guide | ✅ | concentrate allowance + TMR DMI variant |
 | Print / save-as-PDF recipe sheet | ✅ | concentrate only, via @media print |
+| "See background calculation" sheet | ✅ | full DM-basis working, built from the same trace the app calculates with |
+| — exported as print/PDF + plain text | ✅ | CSV was dropped: unusable on a phone for a non-technical reader |
 | WhatsApp / text export | ✅ | both calculators. The concentrate Step 5 labels these honestly — "Print / PDF" is the print-dialog path, "Text file" writes `.txt`. It used to call the `.txt` button "Download PDF". |
 | Onboarding welcome screen + nutrient glossary | ✅ | 4 feature cards, 9 glossary entries |
 | Batch size scaling + quick presets | ✅ | 100 / 200 / 500 / 1000 / 2000 kg |
@@ -605,6 +644,7 @@ node scripts/verify-autoformulate.mjs         # concentrate LP: 8 scenarios (mod
 node scripts/verify-custom-ingredients.mjs    # custom-ingredient store + LP integration
 npx tsx scripts/verify-custom-ingredients.ts  # typed twin of the above
 npx tsx scripts/verify-templates.ts           # every Quick-Start template is LP-feasible
+npx tsx scripts/verify-calculation-trace.ts    # DM-basis math + trace/result agreement (imports REAL lib)
 npx tsx scripts/verify-tmr.ts                 # forages, TMR ranges, DM-split LP, TMR math
 ```
 

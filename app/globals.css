@@ -288,7 +288,8 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
   .printable-recipe,
   .printable-recipe * { visibility: visible; }
 
-  .printable-recipe {
+  .printable-recipe,
+  .printable-calc {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -298,6 +299,18 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
     color: black !important;
     box-shadow: none !important;
   }
+
+  /* ── Two print targets, made mutually exclusive ──────────────────────────
+   * The recipe sheet is always in the DOM (hidden on screen), so adding the
+   * background-calculation sheet to the show-list above would print BOTH
+   * whichever button was pressed. The print handler sets
+   * `document.body.dataset.printing = 'calc'` first, which swaps which one is
+   * visible, and clears it afterwards so the default stays the recipe. */
+  body[data-printing='calc'] .printable-recipe,
+  body[data-printing='calc'] .printable-recipe * { visibility: hidden !important; }
+
+  body[data-printing='calc'] .printable-calc,
+  body[data-printing='calc'] .printable-calc * { visibility: visible !important; }
 
   /* Toaster, modals, sticky headers — all hidden */
   [data-sonner-toaster] { display: none !important; }

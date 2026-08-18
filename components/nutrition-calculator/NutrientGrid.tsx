@@ -24,7 +24,7 @@
 // ============================================================================
 
 import { motion } from 'framer-motion';
-import { getNutrientStatus, type NutrientCalculation } from '@/lib/calculations';
+import { getNutrientStatus, NUTRIENT_DP, type NutrientCalculation } from '@/lib/calculations';
 import type { NutrientRange } from '@/lib/constants';
 
 type Lang = 'en' | 'ur';
@@ -38,32 +38,30 @@ type Lang = 'en' | 'ur';
  * keeping both in one row is what stops a label drifting off its value.
  */
 export const TARGETED = [
-  { value: 'protein',    range: 'protein',    unit: '%',    decimals: 1, en: 'Protein (CP)', ur: 'پروٹین' },
-  { value: 'energy',     range: 'energy',     unit: 'Mcal', decimals: 2, en: 'Energy (ME)',  ur: 'توانائی' },
-  { value: 'tdn',        range: 'tdn',        unit: '%',    decimals: 1, en: 'TDN',          ur: 'TDN' },
-  { value: 'fiber',      range: 'fiber',      unit: '%',    decimals: 1, en: 'Fiber (NDF)',  ur: 'فائبر' },
-  { value: 'fat',        range: 'fat',        unit: '%',    decimals: 1, en: 'Fat',          ur: 'چکنائی' },
-  { value: 'calcium',    range: 'calcium',    unit: '%',    decimals: 2, en: 'Calcium',      ur: 'کیلشیم' },
-  { value: 'phosphorus', range: 'phosphorus', unit: '%',    decimals: 2, en: 'Phosphorus',   ur: 'فاسفورس' },
+  { value: 'protein',    range: 'protein',    unit: '%', en: 'Protein (CP)', ur: 'پروٹین' },
+  { value: 'energy',     range: 'energy',     unit: 'Mcal', en: 'Energy (ME)',  ur: 'توانائی' },
+  { value: 'tdn',        range: 'tdn',        unit: '%', en: 'TDN',          ur: 'TDN' },
+  { value: 'fiber',      range: 'fiber',      unit: '%', en: 'Fiber (NDF)',  ur: 'فائبر' },
+  { value: 'fat',        range: 'fat',        unit: '%', en: 'Fat',          ur: 'چکنائی' },
+  { value: 'calcium',    range: 'calcium',    unit: '%', en: 'Calcium',      ur: 'کیلشیم' },
+  { value: 'phosphorus', range: 'phosphorus', unit: '%', en: 'Phosphorus',   ur: 'فاسفورس' },
 ] as const satisfies ReadonlyArray<{
   value: keyof NutrientCalculation;
   range: keyof NutrientRange;
   unit: string;
-  decimals: number;
   en: string;
   ur: string;
 }>;
 
 /** Informational readouts with no target to compare against. */
 export const UNTARGETED = [
-  { value: 'adf',    unit: '%', decimals: 1, en: 'ADF',        ur: 'ADF' },
-  { value: 'starch', unit: '%', decimals: 1, en: 'Starch',     ur: 'نشاستہ' },
-  { value: 'ash',    unit: '%', decimals: 1, en: 'Ash',        ur: 'راکھ' },
-  { value: 'dm',     unit: '%', decimals: 1, en: 'Dry Matter', ur: 'خشک مادہ' },
+  { value: 'adf',    unit: '%', en: 'ADF',        ur: 'ADF' },
+  { value: 'starch', unit: '%', en: 'Starch',     ur: 'نشاستہ' },
+  { value: 'ash',    unit: '%', en: 'Ash',        ur: 'راکھ' },
+  { value: 'dm',     unit: '%', en: 'Dry Matter', ur: 'خشک مادہ' },
 ] as const satisfies ReadonlyArray<{
   value: keyof NutrientCalculation;
   unit: string;
-  decimals: number;
   en: string;
   ur: string;
 }>;
@@ -204,7 +202,7 @@ export function NutrientGrid({
           label={language === 'en' ? n.en : n.ur}
           value={nutrients[n.value]}
           unit={n.unit}
-          decimals={n.decimals}
+          decimals={NUTRIENT_DP[n.value]}
           language={language}
         />
       ))}
@@ -235,7 +233,7 @@ export function NutrientGrid({
               label={language === 'en' ? n.en : n.ur}
               value={nutrients[n.value]}
               unit={n.unit}
-              decimals={n.decimals}
+              decimals={NUTRIENT_DP[n.value]}
               range={ranges?.[n.range]}
               language={language}
             />

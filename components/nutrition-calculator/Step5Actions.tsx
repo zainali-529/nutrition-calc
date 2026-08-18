@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion';
 import {
-  Check, CheckCircle2, FileText, MessageCircle, Printer, RotateCcw, Save, Loader2,
+  Check, CheckCircle2, FileText, FlaskConical, MessageCircle, Printer, RotateCcw,
+  Save, Loader2,
 } from 'lucide-react';
 import { FormulaItem, calculateNutrients, exportFormulaAsText } from '@/lib/calculations';
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { getOverride } from '@/lib/ingredientOverrides';
 import { getNutritionRange } from '@/lib/constants';
 import { PrintableRecipe } from './PrintableRecipe';
 import { TARGETED, countOnTarget } from './NutrientGrid';
+import { CalculationBreakdownModal } from './CalculationBreakdownModal';
 
 interface Step5ActionsProps {
   language: 'en' | 'ur';
@@ -111,6 +113,7 @@ export function Step5Actions({
    * confirmation and can't create duplicate entries by tapping twice.
    */
   const [saved, setSaved] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const nutrients = calculateNutrients(formula);
   const ranges = getNutritionRange(animalId, stageIndex);
@@ -138,6 +141,10 @@ export function Step5Actions({
     printDesc:   language === 'en'
       ? 'Print or "Save as PDF"'
       : 'پرنٹ یا PDF محفوظ کریں',
+    breakdown:     language === 'en' ? 'See background calculation' : 'پیچھے کا حساب دیکھیں',
+    breakdownDesc: language === 'en'
+      ? 'See every step of the maths — and download it as a table'
+      : 'حساب کا ہر مرحلہ دیکھیں — اور ٹیبل ڈاؤن لوڈ کریں',
     summary: language === 'en' ? 'Formula summary' : 'فارمولا خلاصہ',
     animalLbl: language === 'en' ? 'Animal' : 'جانور',
     stageLbl: language === 'en' ? 'Stage' : 'مرحلہ',
@@ -300,6 +307,24 @@ export function Step5Actions({
         </div>
       </div>
 
+      {/* Sits directly under the summary on purpose: the natural next question
+          after seeing those numbers is "where did they come from?". */}
+      <motion.button
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={() => setBreakdownOpen(true)}
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 flex items-center gap-3 text-left hover:border-slate-400 hover:bg-slate-50 transition-colors tap-transparent"
+      >
+        <span className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0">
+          <FlaskConical className="w-4 h-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-slate-900 leading-tight">{t.breakdown}</span>
+          <span className="block text-[11px] text-slate-500">{t.breakdownDesc}</span>
+        </span>
+        <span className="text-slate-400 text-lg leading-none flex-shrink-0">›</span>
+      </motion.button>
+
       {/* Primary action */}
       <PrimaryAction
         label={saved ? t.savedLabel : t.saveFarmula}
@@ -345,6 +370,17 @@ export function Step5Actions({
           {t.createNew}
         </button>
       </div>
+
+      <CalculationBreakdownModal
+        isOpen={breakdownOpen}
+        language={language}
+        formula={formula}
+        animal={animal}
+        stage={stage}
+        animalId={animalId}
+        stageIndex={stageIndex}
+        onClose={() => setBreakdownOpen(false)}
+      />
 
       {/* Print-only recipe sheet — invisible on screen, only rendered when the
           user triggers `window.print()` via the Print Recipe button above. */}
