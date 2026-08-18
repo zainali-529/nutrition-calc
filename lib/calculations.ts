@@ -423,8 +423,8 @@ export function generateRecommendations(
 /** Plain-text export for WhatsApp / clipboard sharing. */
 export function exportFormulaAsText(formula: FormulaItem[], language: 'en' | 'ur' = 'en'): string {
   const header = language === 'ur'
-    ? '🌾 رومی کیلک (RumiCalc) — فارمولا رپورٹ\n' + '='.repeat(40) + '\n'
-    : '🌾 RumiCalc — Livestock Formula Report\n' + '='.repeat(40) + '\n';
+    ? '🌾 رومی کیلک (RumiCalc) — فارمولا رپورٹ\nپیشکش: سبطین اینیمل ٹاک (Sabtain Animal Talk)\n' + '='.repeat(40) + '\n'
+    : '🌾 RumiCalc — Livestock Formula Report\nPowered by Sabtain Animal Talk\n' + '='.repeat(40) + '\n';
 
   const items = formula.map((f) => `• ${f.name}: ${f.kg.toFixed(1)} kg`).join('\n');
 

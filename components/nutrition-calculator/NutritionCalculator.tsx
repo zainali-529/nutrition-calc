@@ -15,6 +15,7 @@ import { SavedFormulasModal } from './SavedFormulasModal';
 import { NutritionConflictModal, detectConflicts, type NutritionConflict } from './NutritionConflictModal';
 import { OnboardingModal, hasSeenOnboarding, markOnboardingSeen } from './OnboardingModal';
 import { GlossaryModal } from './GlossaryModal';
+import { Footer } from '@/components/Footer';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
 import {
   CATEGORY_KEYS,
@@ -505,20 +506,7 @@ export function NutritionCalculator() {
       </div>
 
       {/* Footer */}
-      {/* <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="mt-12 py-8 border-t border-gray-200 bg-gradient-to-br from-emerald-50 to-green-50"
-      >
-        <div className="max-w-4xl mx-auto px-4 text-center text-sm text-gray-600">
-          <p>
-            {language === 'en'
-              ? 'Built for farmers, by farmers. Precision nutrition for healthy livestock.'
-              : 'کسانوں کے لیے، کسانوں کے ذریعے تیار۔ صحت مند مویشی کے لیے درست غذائیت۔'}
-          </p>
-        </div>
-      </motion.div> */}
+      <Footer language={language} />
     </div>
   );
 }

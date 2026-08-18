@@ -140,10 +140,17 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
                   })}
                 </ol>
 
-                {/* Bilingual note */}
-                <div className="mt-5 sm:mt-6 flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                  <Languages className="w-4 h-4 flex-shrink-0" />
-                  <span>{t.bilingualNote}</span>
+                {/* Bilingual note & Powered by badge */}
+                <div className="mt-5 sm:mt-6 space-y-2">
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+                      <Languages className="w-3.5 h-3.5 text-[#558b2f]" />
+                      <span>{t.bilingualNote}</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/15 px-2.5 py-0.5 rounded-full">
+                      {language === 'en' ? 'Powered by Sabtain Animal Talk' : 'پیشکش: سبطین اینیمل ٹاک'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -151,7 +158,7 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
               <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                 <Button
                   onClick={onClose}
-                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base tap-transparent"
+                  className="w-full h-12 bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold text-base rounded-xl shadow-md shadow-[#0e3b5e]/20 tap-transparent"
                 >
                   {t.cta} →
                 </Button>

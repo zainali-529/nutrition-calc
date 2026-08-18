@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Stepper } from '@/components/nutrition-calculator/Stepper';
 import { LanguageSwitch } from '@/components/nutrition-calculator/LanguageSwitch';
 import { GlossaryModal } from '@/components/nutrition-calculator/GlossaryModal';
+import { Footer } from '@/components/Footer';
 import { STAGES } from '@/lib/constants';
 import { buildTmrFormula, type TmrFormulaItem } from '@/lib/tmrCalculations';
 import { getAnyIngredient, isForage } from '@/lib/forages';
@@ -361,6 +362,7 @@ export function TmrCalculator() {
           </AnimatePresence>
         </div>
       </div>
+      <Footer language={language} />
     </div>
   );
 }

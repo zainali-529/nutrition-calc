@@ -18,7 +18,7 @@ const STEP_ICONS = {
 
 const STEP_LABELS = {
   en: [
-    { title: 'Select Animal', desc: 'Choose livestock type & region' },
+    { title: 'Select Animal', desc: 'Choose livestock type' },
     { title: 'Choose Ingredients', desc: 'Select feed ingredients' },
     { title: 'Build Formula', desc: 'Create balanced recipe' },
     { title: 'Review Status', desc: 'Check nutritional values' },
