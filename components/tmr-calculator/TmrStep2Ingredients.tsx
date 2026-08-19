@@ -38,61 +38,214 @@ type FeasibilityStatus =
   | { kind: 'infeasible'; bottleneck?: string };
 
 // ────────────────────────────────────────────────────────────────────────────
+// Usage tier safety signal
+// ────────────────────────────────────────────────────────────────────────────
+function usageTier(maxInclusion: number) {
+  if (maxInclusion >= 25) {
+    return {
+      key: 'free' as const,
+      en: 'Use freely', ur: 'کھل کر استعمال',
+      chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      icon: '👍',
+    };
+  }
+  if (maxInclusion >= 5) {
+    return {
+      key: 'medium' as const,
+      en: 'Medium amount', ur: 'درمیانی مقدار',
+      chip: 'bg-amber-50 text-amber-800 border-amber-200',
+      icon: '⚖️',
+    };
+  }
+  return {
+    key: 'small' as const,
+    en: 'Small amount only', ur: 'تھوڑی مقدار',
+    chip: 'bg-rose-50 text-rose-700 border-rose-200',
+    icon: '⚠️',
+  };
+}
+
+/**
+ * Modern minimalist nutrient badge row showing real values (P: x%, E: x.xx, F: x%)
+ * with dynamic intensity background styling (high = emerald/amber, med = balanced, low = muted).
+ */
+function NutrientBadges({
+  cp,
+  me,
+  ndf,
+  fat,
+  ca,
+  p,
+  category,
+}: {
+  cp: number;
+  me: number;
+  ndf: number;
+  fat: number;
+  ca: number;
+  p: number;
+  category?: string;
+}) {
+  // If it's a mineral / supplement
+  if (category === 'supplement') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+        {ca > 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-red-50 text-red-800 border-red-200">
+            Ca: {ca}%
+          </span>
+        )}
+        {p > 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-blue-50 text-blue-800 border-blue-200">
+            P: {p}%
+          </span>
+        )}
+        {ca === 0 && p === 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md border bg-slate-50 text-slate-500 border-slate-200">
+            Mineral
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // If it's pure fat / bypass fat
+  if (category === 'fat' || (fat >= 50 && cp === 0)) {
+    return (
+      <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+        <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-amber-100 text-amber-900 border-amber-300">
+          Fat: {fat}%
+        </span>
+        <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-800 border-amber-200">
+          E: {me.toFixed(2)}
+        </span>
+      </div>
+    );
+  }
+
+  // Standard ingredients (Forages, Grains, Brans, Oilcakes)
+  const pStyle =
+    cp >= 20
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+      : cp >= 10
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
+  const eStyle =
+    me >= 2.7
+      ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+      : me >= 2.0
+        ? 'bg-amber-50 text-amber-800 border-amber-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
+  const fStyle =
+    ndf >= 35
+      ? 'bg-green-100 text-green-900 border-green-300 font-bold'
+      : ndf >= 15
+        ? 'bg-slate-100 text-slate-700 border-slate-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+      <span
+        title={`Crude Protein: ${cp}%`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${pStyle}`}
+      >
+        P: {cp.toFixed(0)}%
+      </span>
+      <span
+        title={`Energy (ME): ${me.toFixed(2)} Mcal/kg`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${eStyle}`}
+      >
+        E: {me.toFixed(2)}
+      </span>
+      <span
+        title={`Fiber (NDF): ${ndf}%`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${fStyle}`}
+      >
+        F: {ndf.toFixed(0)}%
+      </span>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Ingredient card (mirrors the one in the concentrate calculator's Step 2)
 // ────────────────────────────────────────────────────────────────────────────
 function IngredientCard({
-  id, name, energyLevel, proteinLevel, isSelected, onSelect, onInfo,
+  id,
+  name,
+  language,
+  isSelected,
+  onSelect,
+  onInfo,
 }: {
   id: string;
   name: string;
-  energyLevel: string;
-  proteinLevel: string;
+  language: 'en' | 'ur';
   isSelected: boolean;
   onSelect: () => void;
   onInfo: () => void;
 }) {
-  const intensity = (level: string) =>
-    level === 'high' ? 'bg-red-100 text-red-700 border-red-300' :
-    level === 'med'  ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                       'bg-green-100 text-green-700 border-green-300';
-
   const data = getAnyIngredient(id);
   const icon = data?.icon ?? '🌾';
+  const maxInclusion = data?.maxInclusion ?? 100;
+  const tier = usageTier(maxInclusion);
 
   return (
     <motion.div
       whileHover={{ y: -3 }}
-      className={`relative p-3 sm:p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center cursor-pointer group tap-transparent ${
+      className={`relative rounded-2xl border-2 transition-all flex flex-col items-center text-center cursor-pointer group tap-transparent ${
         isSelected
-          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-md ring-1 ring-[#558b2f]/50'
-          : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-sm ring-1 ring-[#558b2f]/50'
+          : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40 hover:shadow-sm'
       }`}
     >
       <motion.button
         onClick={(e) => { e.stopPropagation(); onInfo(); }}
         whileTap={{ scale: 0.92 }}
-        className="absolute top-2 right-2 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full shadow-xs touch-reveal tap-transparent"
+        className="absolute top-1.5 right-1.5 z-10 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full shadow-xs touch-reveal tap-transparent"
         title="View details"
         aria-label="View details"
       >
-        <Info className="w-4 h-4" />
+        <Info className="w-3.5 h-3.5" />
       </motion.button>
 
       <motion.button
         onClick={onSelect}
-        whileTap={{ scale: 0.98 }}
-        className="w-full flex flex-col items-center gap-2"
+        whileTap={{ scale: 0.97 }}
+        className="w-full flex flex-col items-center gap-1.5 px-2.5 pt-4 pb-3 tap-transparent"
       >
-        <span className="text-3xl">{icon}</span>
-        <span className={`text-sm font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
+        <span className="text-3xl sm:text-4xl leading-none group-hover:scale-105 transition-transform">{icon}</span>
+        <span className={`text-[13px] sm:text-sm font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
           {name}
         </span>
-        <div className="flex gap-1 mt-1 flex-wrap justify-center">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${intensity(energyLevel)}`}>E</span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${intensity(proteinLevel)}`}>P</span>
-        </div>
+
+        {data && (
+          <NutrientBadges
+            cp={data.cp}
+            me={data.me}
+            ndf={data.ndf}
+            fat={data.fat}
+            ca={data.ca}
+            p={data.p}
+            category={data.category}
+          />
+        )}
+
+        {/* Safety usage tier */}
+        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full border ${tier.chip}`}>
+          <span aria-hidden>{tier.icon}</span>
+          {language === 'en' ? tier.en : tier.ur}
+          <span className="opacity-65">≤{maxInclusion}%</span>
+        </span>
+
         {isSelected && (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-[#558b2f] font-extrabold text-lg">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="mt-0.5 w-5 h-5 rounded-full bg-[#558b2f] text-white flex items-center justify-center text-xs font-extrabold shadow-xs"
+          >
             ✓
           </motion.div>
         )}
@@ -118,8 +271,8 @@ function IngredientSection({
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold">{title}</h3>
-        <span className="text-xs text-gray-500 font-medium">
+        <h3 className="text-base font-bold text-[#0e3b5e]">{title}</h3>
+        <span className="text-xs text-slate-500 font-medium">
           {selectedKeys.filter((k) => ingredientKeys.includes(k)).length}/{ingredientKeys.length}
         </span>
       </div>
@@ -132,8 +285,7 @@ function IngredientSection({
               key={key}
               id={key}
               name={data[language === 'en' ? 'nameEn' : 'nameUr']}
-              energyLevel={data.energyLevel}
-              proteinLevel={data.proteinLevel}
+              language={language}
               isSelected={selectedKeys.includes(key)}
               onSelect={() => onToggle(key)}
               onInfo={() => onInfo(key)}

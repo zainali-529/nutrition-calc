@@ -105,33 +105,110 @@ function usageTier(maxInclusion: number) {
   };
 }
 
-/** Compact labelled pill for the energy / protein intensity levels. */
-function LevelPill({
-  icon, label, level, language,
+/**
+ * Modern minimalist nutrient badge row showing real values (P: x%, E: x.xx, F: x%)
+ * with dynamic intensity background styling (high = emerald/amber, med = balanced, low = muted).
+ */
+function NutrientBadges({
+  cp,
+  me,
+  ndf,
+  fat,
+  ca,
+  p,
+  category,
 }: {
-  icon: string;
-  label: string;
-  level: string;
-  language: 'en' | 'ur';
+  cp: number;
+  me: number;
+  ndf: number;
+  fat: number;
+  ca: number;
+  p: number;
+  category?: string;
 }) {
-  const styles: Record<string, string> = {
-    high: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    med:  'bg-slate-100  text-slate-700  border-slate-300',
-    low:  'bg-slate-50   text-slate-500  border-slate-200',
-  };
-  const word: Record<string, { en: string; ur: string }> = {
-    high: { en: 'High', ur: 'زیادہ' },
-    med:  { en: 'Med',  ur: 'درمیانی' },
-    low:  { en: 'Low',  ur: 'کم' },
-  };
+  // If it's a mineral / supplement
+  if (category === 'supplement') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+        {ca > 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-red-50 text-red-800 border-red-200">
+            Ca: {ca}%
+          </span>
+        )}
+        {p > 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-blue-50 text-blue-800 border-blue-200">
+            P: {p}%
+          </span>
+        )}
+        {ca === 0 && p === 0 && (
+          <span className="inline-flex items-center text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md border bg-slate-50 text-slate-500 border-slate-200">
+            Mineral
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // If it's pure fat / bypass fat
+  if (category === 'fat' || (fat >= 50 && cp === 0)) {
+    return (
+      <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+        <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-amber-100 text-amber-900 border-amber-300">
+          Fat: {fat}%
+        </span>
+        <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-800 border-amber-200">
+          E: {me.toFixed(2)}
+        </span>
+      </div>
+    );
+  }
+
+  // Standard ingredients (Grains, Brans, Oilcakes, Forages)
+  // Dynamic Protein (P) design
+  const pStyle =
+    cp >= 22
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+      : cp >= 12
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
+  // Dynamic Energy (E) design
+  const eStyle =
+    me >= 2.85
+      ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+      : me >= 2.2
+        ? 'bg-amber-50 text-amber-800 border-amber-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
+  // Dynamic Fiber (F) design
+  const fStyle =
+    ndf >= 35
+      ? 'bg-green-100 text-green-900 border-green-300 font-bold'
+      : ndf >= 15
+        ? 'bg-slate-100 text-slate-700 border-slate-200 font-semibold'
+        : 'bg-slate-50 text-slate-400 border-slate-200 font-medium';
+
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${styles[level] ?? styles.med}`}
-      title={`${label}: ${word[level]?.en ?? level}`}
-    >
-      <span aria-hidden>{icon}</span>
-      {word[level]?.[language === 'en' ? 'en' : 'ur'] ?? level}
-    </span>
+    <div className="flex items-center gap-1 flex-wrap justify-center my-0.5">
+      <span
+        title={`Crude Protein: ${cp}%`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${pStyle}`}
+      >
+        P: {cp.toFixed(0)}%
+      </span>
+      <span
+        title={`Energy (ME): ${me.toFixed(2)} Mcal/kg`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${eStyle}`}
+      >
+        E: {me.toFixed(2)}
+      </span>
+      <span
+        title={`Fiber (NDF): ${ndf}%`}
+        className={`inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-md border leading-none transition-colors ${fStyle}`}
+      >
+        F: {ndf.toFixed(0)}%
+      </span>
+    </div>
   );
 }
 
@@ -139,8 +216,13 @@ interface IngredientCardProps {
   id: string;
   name: string;
   language: 'en' | 'ur';
-  energyLevel: string;
-  proteinLevel: string;
+  cp: number;
+  me: number;
+  ndf: number;
+  fat: number;
+  ca: number;
+  p: number;
+  category?: string;
   maxInclusion: number;
   isSelected: boolean;
   /** True if this is a user-added (custom) ingredient — gets a "Custom" pill + delete control. */
@@ -160,8 +242,13 @@ function IngredientCard({
   id,
   name,
   language,
-  energyLevel,
-  proteinLevel,
+  cp,
+  me,
+  ndf,
+  fat,
+  ca,
+  p,
+  category,
   maxInclusion,
   isSelected,
   isCustom = false,
@@ -178,21 +265,20 @@ function IngredientCard({
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -3 }}
       animate={showRecommended ? { scale: [1, 1.015, 1] } : { scale: 1 }}
       transition={showRecommended ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
       className={`relative rounded-2xl border-2 transition-all flex flex-col items-center text-center cursor-pointer group ${
         isSelected
-          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-md ring-1 ring-[#558b2f]/50'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-sm ring-1 ring-[#558b2f]/50'
           : showRecommended
-            ? 'border-[#558b2f] bg-gradient-to-b from-[#f4f8ee] to-white shadow-lg ring-2 ring-[#558b2f]/30'
+            ? 'border-[#558b2f] bg-gradient-to-b from-[#f4f8ee] to-white shadow-md ring-2 ring-[#558b2f]/30'
             : isCustom
               ? 'border-purple-200 bg-purple-50/40 hover:border-purple-400'
               : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40 hover:shadow-sm'
       }`}
     >
-      {/* Top-right action buttons. `touch-reveal` keeps them visible on touch
-          devices but lets them fade in on hover for mouse users. */}
+      {/* Top-right action buttons */}
       <div className="absolute top-1.5 right-1.5 z-10 flex gap-1 touch-reveal">
         {isCustom && onDelete && (
           <motion.button
@@ -201,7 +287,7 @@ function IngredientCard({
               onDelete();
             }}
             whileTap={{ scale: 0.92 }}
-            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-md tap-transparent"
+            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full shadow-xs tap-transparent"
             title="Delete custom ingredient"
             aria-label="Delete custom ingredient"
           >
@@ -214,7 +300,7 @@ function IngredientCard({
             onInfo();
           }}
           whileTap={{ scale: 0.92 }}
-          className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full shadow-md tap-transparent"
+          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full shadow-xs tap-transparent"
           title="View details"
           aria-label="View details"
         >
@@ -232,7 +318,7 @@ function IngredientCard({
         <motion.span
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#558b2f] text-white shadow-md whitespace-nowrap"
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#558b2f] text-white shadow-md whitespace-nowrap"
         >
           <Sparkles className="w-2.5 h-2.5" />
           {language === 'en' ? 'ADD THIS' : 'یہ شامل کریں'}
@@ -243,32 +329,39 @@ function IngredientCard({
       <motion.button
         onClick={onSelect}
         whileTap={{ scale: 0.97 }}
-        className="w-full flex flex-col items-center gap-1.5 px-2 pt-5 pb-3 tap-transparent"
+        className="w-full flex flex-col items-center gap-1.5 px-2.5 pt-4 pb-3 tap-transparent"
       >
-        <span className="text-3xl leading-none">{getIngredientIcon(id)}</span>
+        <span className="text-3xl sm:text-4xl leading-none group-hover:scale-105 transition-transform">
+          {getIngredientIcon(id)}
+        </span>
 
-        <span className={`text-[13px] font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
+        <span className={`text-[13px] sm:text-sm font-bold leading-tight ${isSelected ? 'text-[#0e3b5e]' : 'text-slate-900'}`}>
           {name}
         </span>
 
-        {/* Energy / protein strength */}
-        <div className="flex gap-1 flex-wrap justify-center">
-          <LevelPill icon="⚡" label="Energy"  level={energyLevel}  language={language} />
-          <LevelPill icon="🥩" label="Protein" level={proteinLevel} language={language} />
-        </div>
+        {/* Real nutrient value badges (P: x%, E: x.xx, F: x%) */}
+        <NutrientBadges
+          cp={cp}
+          me={me}
+          ndf={ndf}
+          fat={fat}
+          ca={ca}
+          p={p}
+          category={category}
+        />
 
-        {/* How much may be used — the safety signal */}
-        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${tier.chip}`}>
+        {/* How much may be used safety tier pill */}
+        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full border ${tier.chip}`}>
           <span aria-hidden>{tier.icon}</span>
           {language === 'en' ? tier.en : tier.ur}
-          <span className="opacity-60">≤{maxInclusion}%</span>
+          <span className="opacity-65">≤{maxInclusion}%</span>
         </span>
 
         {isSelected && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="mt-0.5 w-5 h-5 rounded-full bg-[#558b2f] text-white flex items-center justify-center text-xs font-bold"
+            className="mt-0.5 w-5 h-5 rounded-full bg-[#558b2f] text-white flex items-center justify-center text-xs font-extrabold shadow-xs"
           >
             ✓
           </motion.div>
@@ -366,8 +459,13 @@ function IngredientGroup({
               id={ingredientKey}
               name={data[language === 'en' ? 'nameEn' : 'nameUr']}
               language={language}
-              energyLevel={data.energyLevel}
-              proteinLevel={data.proteinLevel}
+              cp={data.cp}
+              me={data.me}
+              ndf={data.ndf}
+              fat={data.fat}
+              ca={data.ca}
+              p={data.p}
+              category={data.category}
               maxInclusion={data.maxInclusion}
               isSelected={selected.includes(ingredientKey)}
               isCustom={custom}
