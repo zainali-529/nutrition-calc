@@ -44,13 +44,11 @@ for (const tpl of QUICK_START_TEMPLATES) {
     continue;
   }
 
-  // Flatten the template's chosen ingredients into the LP input
-  const ingredientKeys = [
-    ...tpl.chosenIngredients.energy,
-    ...tpl.chosenIngredients.protein,
-    ...tpl.chosenIngredients.fiber,
-    ...tpl.chosenIngredients.fat,
-  ];
+  // Flatten the template's chosen ingredients into the LP input.
+  // Uses Object.values so every category bucket is included — a hardcoded list
+  // here would silently skip a newly-added category (e.g. 'supplement') and
+  // the script would then "pass" while testing an incomplete selection.
+  const ingredientKeys = Object.values(tpl.chosenIngredients).flat();
 
   // Try all 4 modes — Balanced is the default that fires on Step 3 mount,
   // but we should also test min_cost since the user can switch.

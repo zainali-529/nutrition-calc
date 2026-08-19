@@ -157,23 +157,23 @@ export function TmrStep5Actions({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg p-5 sm:p-8 text-white text-center"
+        className="bg-gradient-to-r from-[#0e3b5e] via-[#104770] to-[#558b2f] rounded-2xl p-5 sm:p-8 text-white text-center shadow-lg shadow-[#0e3b5e]/20"
       >
         <div className="text-4xl sm:text-5xl mb-2 sm:mb-4">🎉</div>
-        <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">{t.complete}</h2>
-        <p className="text-emerald-100 text-sm sm:text-base">{t.congrats}</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold mb-1 sm:mb-2">{t.complete}</h2>
+        <p className="text-white/90 text-sm sm:text-base font-medium">{t.congrats}</p>
       </motion.div>
 
       {/* Summary */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-        <h3 className="font-bold text-lg mb-4">{t.summary}</h3>
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 rounded-2xl border-2 border-[#0e3b5e]/20 p-4 sm:p-6 shadow-xs">
+        <h3 className="font-extrabold text-lg text-[#0e3b5e] mb-4">{t.summary}</h3>
         <div className="space-y-3 text-sm">
-          <div className="flex justify-between"><span className="text-gray-600">{t.animal}:</span> <span className="font-semibold">{animal}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">{t.stage}:</span> <span className="font-semibold">{stage}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">{t.items}:</span> <span className="font-semibold">{formula.length}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">{t.targetSplit}:</span> <span className="font-semibold">🌿 {forageDmPct}% / ⚙️ {100 - forageDmPct}%</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">{t.achievedSplit}:</span> <span className="font-semibold">🌿 {(nutrients.forageDmShare * 100).toFixed(1)}% / ⚙️ {(nutrients.concentrateDmShare * 100).toFixed(1)}%</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">{t.date}:</span> <span className="font-semibold">{new Date().toLocaleDateString()}</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.animal}:</span> <span className="font-bold text-[#0e3b5e]">{animal}</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.stage}:</span> <span className="font-bold text-[#0e3b5e]">{stage}</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.items}:</span> <span className="font-bold text-[#0e3b5e]">{formula.length}</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.targetSplit}:</span> <span className="font-bold text-[#558b2f]">🌿 {forageDmPct}% / ⚙️ {100 - forageDmPct}%</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.achievedSplit}:</span> <span className="font-bold text-[#0e3b5e]">🌿 {(nutrients.forageDmShare * 100).toFixed(1)}% / ⚙️ {(nutrients.concentrateDmShare * 100).toFixed(1)}%</span></div>
+          <div className="flex justify-between"><span className="text-slate-600 font-medium">{t.date}:</span> <span className="font-semibold text-slate-500">{new Date().toLocaleDateString()}</span></div>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export function TmrStep5Actions({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 bg-green-500 text-white rounded-lg p-4 shadow-lg z-50 mb-safe-bottom"
+          className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 bg-[#558b2f] text-white font-bold rounded-xl p-4 shadow-lg z-50 mb-safe-bottom"
         >
           ✓ {t.saved}
         </motion.div>

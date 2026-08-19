@@ -1,10 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { FormulaItem, calculateNutrients, generateRecommendations } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { NUTRITION_RANGES } from '@/lib/constants';
 import { DailyFeedingGuide } from './DailyFeedingGuide';
+import { NutrientGrid, TARGETED, countOnTarget } from './NutrientGrid';
 
 interface Step4StatusProps {
   language: 'en' | 'ur';
@@ -15,36 +17,36 @@ interface Step4StatusProps {
   onBack: () => void;
 }
 
-function StatusCard({
+/**
+ * One row of actionable advice. Only rendered for nutrients that are actually
+ * off target — see the note in Step4Status on why the passing ones are dropped.
+ */
+function FixRow({
   status,
   title,
   description,
-  icon,
   index,
 }: {
-  status: 'success' | 'warning' | 'error';
+  status: 'warning' | 'error';
   title: string;
   description: string;
-  icon: string;
   index: number;
 }) {
-  const statusColors = {
-    success: 'bg-green-50 border-green-300 text-green-900',
-    warning: 'bg-yellow-50 border-yellow-300 text-yellow-900',
-    error: 'bg-red-50 border-red-300 text-red-900',
-  };
+  const tone = status === 'error'
+    ? { box: 'bg-rose-50 border-rose-200', text: 'text-rose-900', icon: 'text-rose-600' }
+    : { box: 'bg-amber-50 border-amber-200', text: 'text-amber-900', icon: 'text-amber-600' };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className={`${statusColors[status]} rounded-lg border-2 p-4 flex gap-4 items-start`}
+      transition={{ delay: index * 0.05 }}
+      className={`${tone.box} ${tone.text} rounded-xl border px-3 py-2.5 flex gap-2.5 items-start`}
     >
-      <span className="text-3xl flex-shrink-0">{icon}</span>
-      <div className="flex-1">
-        <h4 className="font-bold">{title}</h4>
-        <p className="text-sm opacity-90">{description}</p>
+      <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${tone.icon}`} />
+      <div className="min-w-0">
+        <span className="text-[13px] font-bold">{title}</span>
+        <p className="text-xs opacity-90 leading-snug">{description}</p>
       </div>
     </motion.div>
   );
@@ -64,16 +66,27 @@ export function Step4Status({
   const animalRanges = selectedAnimal ? NUTRITION_RANGES[selectedAnimal as keyof typeof NUTRITION_RANGES] : null;
   const ranges = animalRanges ? animalRanges[selectedStage] : null;
 
-  const recommendations = generateRecommendations(nutrients, ranges);
+  /**
+   * ONLY the nutrients that need action.
+   *
+   * `generateRecommendations` returns a row for all seven, and for a passing one
+   * that row just says "Protein (CP) is within optimal range" — which the card
+   * above it already showed with a green dot and an "on target" label. That made
+   * the screen say everything twice and, on a phone, doubled the scrolling for
+   * zero information. The passing nutrients collapse into one summary line.
+   */
+  const fixes = generateRecommendations(nutrients, ranges)
+    .filter((r): r is typeof r & { status: 'warning' | 'error' } => r.status !== 'success')
+    // errors before warnings — worst first
+    .sort((a, b) => (a.status === b.status ? 0 : a.status === 'error' ? -1 : 1));
+
+  const onTarget = countOnTarget(nutrients, ranges);
+  const allGood = ranges != null && fixes.length === 0;
 
   const t = {
     nutritionStatus: language === 'en' ? 'Nutrition Status' : 'غذائی حالت',
-    recommendations: language === 'en' ? 'Recommendations' : 'سفارشات',
     next: language === 'en' ? 'Next' : 'اگلا',
     back: language === 'en' ? 'Back' : 'واپس',
-    optimal: language === 'en' ? 'Optimal' : 'بہترین',
-    needAdjustment: language === 'en' ? 'Needs Adjustment' : 'ترمیم کی ضرورت',
-    outOfRange: language === 'en' ? 'Out of Range' : 'حد سے باہر',
   };
 
   return (
@@ -81,99 +94,72 @@ export function Step4Status({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
+      className="space-y-5"
     >
-      <div>
-        <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-          <span className="text-3xl">📊</span>
-          {t.nutritionStatus}
-        </h2>
-        <p className="text-gray-600 text-sm">
-          {language === 'en'
-            ? 'Review the nutritional status of your formula'
-            : 'اپنے فارمولے کی غذائی حالت کا جائزہ لیں'}
-        </p>
+      {/* Header carries the verdict, so the answer is visible before any scrolling */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <span className="text-2xl sm:text-3xl">📊</span>
+            {t.nutritionStatus}
+          </h2>
+          <p className="text-gray-600 text-xs sm:text-sm">
+            {language === 'en'
+              ? 'How your formula compares to this animal’s targets.'
+              : 'آپ کا فارمولا جانور کے اہداف سے کیسا ہے۔'}
+          </p>
+        </div>
+        {ranges && (
+          <span
+            className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 border ${
+              allGood ? 'bg-[#558b2f]/10 text-[#4d7c0f] border-[#558b2f]/30' : 'bg-amber-100 text-amber-900 border-amber-300'
+            }`}
+          >
+            {allGood
+              ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#558b2f]" />{language === 'en' ? 'All targets met' : 'تمام اہداف پورے'}</>
+              : <><AlertTriangle className="w-3.5 h-3.5 text-amber-700" />{onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}</>}
+          </span>
+        )}
       </div>
 
-      {/* Current Nutrient Levels */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[
-          {
-            label: 'protein',
-            icon: '✅',
-            value: `${nutrients.protein.toFixed(1)}%`,
-            sublabel: 'Protein (DM)',
-            range: ranges?.protein,
-          },
-          {
-            label: 'energy',
-            icon: '⚡',
-            value: `${nutrients.energy.toFixed(2)} Mcal`,
-            sublabel: 'Energy (ME) (DM)',
-            range: ranges?.energy,
-          },
-          {
-            label: 'tdn',
-            icon: '📈',
-            value: `${nutrients.tdn.toFixed(1)}%`,
-            sublabel: 'TDN (DM)',
-            range: ranges?.tdn,
-          },
-          {
-            label: 'fiber',
-            icon: '🌾',
-            value: `${nutrients.fiber.toFixed(1)}%`,
-            sublabel: 'NDF (DM)',
-            range: ranges?.fiber,
-          },
-          {
-            label: 'fat',
-            icon: '🥑',
-            value: `${nutrients.fat.toFixed(1)}%`,
-            sublabel: 'Fat (DM)',
-            range: ranges?.fat,
-          },
-          {
-            label: 'calcium',
-            icon: '🦴',
-            value: `${nutrients.calcium.toFixed(2)}%`,
-            sublabel: 'Calcium (DM)',
-            range: ranges?.calcium,
-          },
-          {
-            label: 'phosphorus',
-            icon: '🧪',
-            value: `${nutrients.phosphorus.toFixed(2)}%`,
-            sublabel: 'Phosphorus (DM)',
-            range: ranges?.phosphorus,
-          },
-        ].map((item, idx) => {
-          const isInRange = item.range ? nutrients[item.label as keyof typeof nutrients] >= item.range.min && nutrients[item.label as keyof typeof nutrients] <= item.range.max : true;
-          
-          return (
-            <motion.div
-              key={idx}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: idx * 0.1 }}
-              className={`rounded-lg p-3 border flex flex-col items-center gap-1 transition-colors ${
-                isInRange 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-white border-gray-200'
-              }`}
-            >
-              <span className="text-2xl">{isInRange ? '✅' : item.icon}</span>
-              <span className={`text-lg font-bold ${isInRange ? 'text-green-900' : 'text-gray-900'}`}>{item.value}</span>
-              <span className={`text-xs ${isInRange ? 'text-green-700' : 'text-gray-600'}`}>{item.sublabel}</span>
-              {item.range && (
-                <span className={`text-[10px] ${isInRange ? 'text-green-600' : 'text-gray-400'}`}>
-                  {item.range.min}-{item.range.max}
-                </span>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+      {/* Same grid component as Step 3 — the untargeted values collapse here to
+          keep the review screen short on a phone. */}
+      <NutrientGrid
+        nutrients={nutrients}
+        ranges={ranges}
+        language={language}
+        untargeted="collapsed"
+      />
+
+      {/* Actionable advice only. When everything passes this is a single line
+          instead of seven rows repeating what the cards already said. */}
+      {allGood ? (
+        <div className="flex items-center gap-2.5 rounded-xl border border-[#558b2f]/30 bg-[#f4f8ee] px-3.5 py-3">
+          <CheckCircle2 className="w-4 h-4 text-[#558b2f] flex-shrink-0" />
+          <p className="text-[13px] font-bold text-[#0e3b5e]">
+            {language === 'en'
+              ? 'Every nutrient is within its target range — this formula is ready to feed.'
+              : 'تمام غذائی اجزاء اپنے ہدف کے اندر ہیں — یہ فارمولا تیار ہے۔'}
+          </p>
+        </div>
+      ) : fixes.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            {language === 'en'
+              ? `What to fix (${fixes.length})`
+              : `کیا درست کرنا ہے (${fixes.length})`}
+          </h3>
+          {fixes.map((rec, idx) => (
+            <FixRow
+              key={rec.nutrient}
+              status={rec.status}
+              title={rec.nutrient}
+              description={rec.recommendation}
+              index={idx}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Daily Feeding Guide — how much to feed per day */}
       <DailyFeedingGuide
@@ -183,57 +169,14 @@ export function Step4Status({
         formula={formula}
       />
 
-      {/* Recommendations */}
-      <div>
-        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <span className="text-2xl">💡</span>
-          {t.recommendations}
-        </h3>
-        <div className="space-y-3">
-          {recommendations.map((rec, idx) => {
-            const statusIcons: Record<'success' | 'warning' | 'error', string> = {
-              success: '✅',
-              warning: '⚠️',
-              error: '🛑',
-            };
-
-            return (
-              <StatusCard
-                key={idx}
-                status={rec.status}
-                title={rec.nutrient}
-                description={rec.recommendation}
-                icon={statusIcons[rec.status] || '❓'}
-                index={idx}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Info Box */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="bg-blue-50 border border-blue-200 rounded-lg p-4"
-      >
-        <p className="text-sm text-blue-900">
+      <p className="text-[11px] text-slate-500 leading-relaxed flex gap-1.5">
+        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-slate-400" />
+        <span>
           {language === 'en'
-            ? 'Targets are for the CONCENTRATE mix only. The animal also receives fresh forage, hay, or silage on top of this. Consult a veterinarian for farm-specific adjustments.'
-            : 'یہ ہدف صرف کانسنٹریٹ کے لیے ہیں۔ جانور کو سبز چارہ، گھاس یا سائیلج بھی ساتھ ملے گا۔ فارم کی مخصوص ترمیم کے لیے ڈاکٹر سے رجوع کریں۔'}
-        </p>
-      </motion.div>
-
-      {/* Action Buttons — taller tap targets on mobile */}
-      <div className="flex gap-3 pt-6 sm:pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
-          {t.back}
-        </Button>
-        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
-          {t.next}
-        </Button>
-      </div>
+            ? 'Targets are for the CONCENTRATE mix only — the animal also gets fresh forage, hay or silage on top. Ask a vet for farm-specific adjustments.'
+            : 'یہ ہدف صرف کانسنٹریٹ کے لیے ہیں — جانور کو سبز چارہ، گھاس یا سائیلج بھی ملے گا۔ مخصوص مشورے کے لیے ڈاکٹر سے رجوع کریں۔'}
+        </span>
+      </p>
     </motion.div>
   );
 }

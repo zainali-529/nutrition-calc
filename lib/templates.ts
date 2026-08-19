@@ -10,17 +10,25 @@
 // least one strong CP source, one energy source, a fibre source, and the basic
 // minerals. The ingredient mix is picked to match Pakistani availability and
 // the typical regional price range.
+//
+// Verified by `npx tsx scripts/verify-templates.ts`, which solves every
+// template and fails if any becomes infeasible.
 // ================================================================================
 
 /**
  * Same shape as the orchestrator's `chosenIngredients` state — a map from
- * the 4 concentrate categories to the selected ingredient keys.
+ * the 5 concentrate categories to the selected ingredient keys.
+ *
+ * `fat` = true fat/oil sources (bypass fats, vegetable oils).
+ * `supplement` = minerals and buffers (limestone, DCP, salt, soda).
+ * Before those two were split apart, the minerals below lived under `fat`.
  */
 type ChosenIngredients = {
-  energy:  string[];
-  protein: string[];
-  fiber:   string[];
-  fat:     string[];
+  energy:     string[];
+  protein:    string[];
+  fiber:      string[];
+  fat:        string[];
+  supplement: string[];
 };
 
 export interface QuickStartTemplate {
@@ -58,10 +66,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     stageIndex: 1,
     badgeEn: 'Most popular', badgeUr: 'سب سے مقبول',
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran', 'molasses'],
-      protein: ['sbm', 'csm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_bran', 'molasses'],
+      protein:    ['sbm', 'csm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'salt'],
     },
   },
   {
@@ -74,10 +83,14 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_cow',
     stageIndex: 0,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran', 'molasses'],
-      protein: ['sbm', 'canola_meal', 'csm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt', 'sodium_bicarb'],
+      energy:     ['corn', 'wheat_bran', 'molasses'],
+      protein:    ['sbm', 'canola_meal', 'csm'],
+      fiber:      [],
+      // Bypass fat is standard practice for a 20 L cow in early lactation —
+      // she's in negative energy balance and needs the density. The LP will
+      // only actually use it if it helps hit the targets.
+      fat:        ['bypassFat'],
+      supplement: ['limestone', 'salt', 'sodium_bicarb'],
     },
   },
   {
@@ -90,10 +103,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_cow',
     stageIndex: 3,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran'],
-      protein: ['csm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_bran'],
+      protein:    ['csm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'salt'],
     },
   },
 
@@ -108,10 +122,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_buffalo',
     stageIndex: 1,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran', 'molasses', 'rice_polish'],
-      protein: ['sbm', 'csm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_bran', 'molasses', 'rice_polish'],
+      protein:    ['sbm', 'csm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'salt'],
     },
   },
 
@@ -126,10 +141,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'heifer',
     stageIndex: 1,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran'],
-      protein: ['sbm', 'csm'],
-      fiber:   [],
-      fat:     ['limestone', 'dcp', 'salt'],
+      energy:     ['corn', 'wheat_bran'],
+      protein:    ['sbm', 'csm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'dcp', 'salt'],
     },
   },
 
@@ -144,10 +160,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'fattening_bull',
     stageIndex: 1,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_grain', 'molasses', 'wheat_bran'],
-      protein: ['csm', 'sbm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_grain', 'molasses', 'wheat_bran'],
+      protein:    ['csm', 'sbm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'salt'],
     },
   },
   {
@@ -160,10 +177,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'fattening_bull',
     stageIndex: 2,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_grain', 'broken_rice', 'molasses'],
-      protein: ['csm', 'rsm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt', 'sodium_bicarb'],
+      energy:     ['corn', 'wheat_grain', 'broken_rice', 'molasses'],
+      protein:    ['csm', 'rsm'],
+      fiber:      [],
+      fat:        [],
+      supplement: ['limestone', 'salt', 'sodium_bicarb'],
     },
   },
 
@@ -178,10 +196,15 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_goat',
     stageIndex: 1,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_bran'],
-      protein: ['sbm', 'csm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_bran'],
+      protein:    ['sbm', 'csm'],
+      // Chickpea husk is the key to this template being solvable at all.
+      // Reaching NDF >=20% on wheat bran + CSM alone drags phosphorus (1.1%
+      // and 1.0% P respectively) past its 0.55% ceiling. Channa chilka brings
+      // 55% NDF at only 0.25% P, so fibre and phosphorus stop fighting.
+      fiber:      ['chickpea_husk'],
+      fat:        ['rice_bran_oil'],
+      supplement: ['limestone', 'salt'],
     },
   },
 
@@ -196,10 +219,14 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'fattening_goat',
     stageIndex: 1,
     chosenIngredients: {
-      energy:  ['corn', 'wheat_grain', 'molasses'],
-      protein: ['csm', 'sbm'],
-      fiber:   [],
-      fat:     ['limestone', 'salt'],
+      energy:     ['corn', 'wheat_grain', 'molasses'],
+      protein:    ['csm', 'sbm'],
+      fiber:      [],
+      // Without a fat source this template maxed out at exactly 3.00% fat
+      // against a >=3.0% floor — infeasible on a knife edge. A little oil
+      // gives the solver the headroom it needs.
+      fat:        ['rice_bran_oil'],
+      supplement: ['limestone', 'salt'],
     },
   },
 ];

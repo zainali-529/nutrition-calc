@@ -4,47 +4,50 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Farm Theme Colors */
-  --farm-emerald: #059669;
-  --farm-emerald-light: #10b981;
-  --farm-amber: #d97706;
-  --farm-slate: #0f172a;
-  --farm-slate-light: #f1f5f9;
+  /* RumiCalc Logo Theme Colors */
+  --brand-navy: #0e3b5e;
+  --brand-navy-dark: #072136;
+  --brand-navy-light: #1a507a;
+  --brand-green: #558b2f;
+  --brand-green-dark: #33691e;
+  --brand-green-light: #689f38;
+  --brand-amber: #d97706;
+  --brand-slate: #0f172a;
   
   /* Design Tokens */
   --background: #f8fafc;
-  --foreground: #0f172a;
+  --foreground: #0e3b5e;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #0f172a;
+  --primary: #0e3b5e;
   --primary-foreground: #ffffff;
-  --secondary: #059669;
+  --secondary: #558b2f;
   --secondary-foreground: #ffffff;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #d97706;
+  --accent: #558b2f;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #e2e8f0;
   --input: #ffffff;
-  --ring: #059669;
-  --chart-1: #059669;
-  --chart-2: #10b981;
+  --ring: #558b2f;
+  --chart-1: #0e3b5e;
+  --chart-2: #558b2f;
   --chart-3: #d97706;
-  --chart-4: #f59e0b;
-  --chart-5: #0f172a;
+  --chart-4: #689f38;
+  --chart-5: #1a507a;
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #059669;
+  --sidebar-foreground: #0e3b5e;
+  --sidebar-primary: #0e3b5e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #d97706;
+  --sidebar-accent: #558b2f;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #059669;
+  --sidebar-ring: #558b2f;
 }
 
 .dark {
@@ -288,7 +291,8 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
   .printable-recipe,
   .printable-recipe * { visibility: visible; }
 
-  .printable-recipe {
+  .printable-recipe,
+  .printable-calc {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -298,6 +302,18 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
     color: black !important;
     box-shadow: none !important;
   }
+
+  /* ── Two print targets, made mutually exclusive ──────────────────────────
+   * The recipe sheet is always in the DOM (hidden on screen), so adding the
+   * background-calculation sheet to the show-list above would print BOTH
+   * whichever button was pressed. The print handler sets
+   * `document.body.dataset.printing = 'calc'` first, which swaps which one is
+   * visible, and clears it afterwards so the default stays the recipe. */
+  body[data-printing='calc'] .printable-recipe,
+  body[data-printing='calc'] .printable-recipe * { visibility: hidden !important; }
+
+  body[data-printing='calc'] .printable-calc,
+  body[data-printing='calc'] .printable-calc * { visibility: visible !important; }
 
   /* Toaster, modals, sticky headers — all hidden */
   [data-sonner-toaster] { display: none !important; }
@@ -326,7 +342,8 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
 
 /* Selection styling */
 ::selection {
-  @apply bg-emerald-200 text-emerald-900;
+  background-color: rgba(85, 139, 47, 0.25);
+  color: #0e3b5e;
 }
 
 /* Scrollbar styling */
@@ -336,22 +353,24 @@ button, a, [role="button"], [tabindex] { -webkit-tap-highlight-color: transparen
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  background-color: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-emerald-400 rounded-full;
+  background-color: #cbd5e1;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-emerald-600;
+  background-color: #558b2f;
 }
 
 /* Focus styles for accessibility */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  @apply outline-none ring-2 ring-emerald-500 ring-offset-2;
+  outline: none;
+  box-shadow: 0 0 0 2px #558b2f, 0 0 0 4px rgba(14, 59, 94, 0.15);
 }
 
 /* Smooth transitions for all interactive elements */

@@ -113,19 +113,19 @@ export function TmrStep4Status({
       </div>
 
       {/* DM-split status */}
-      <div className={`rounded-xl border-2 p-4 ${splitMatch ? 'bg-emerald-50 border-emerald-300' : 'bg-amber-50 border-amber-300'}`}>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">{t.splitTitle}</p>
+      <div className={`rounded-2xl border-2 p-4 sm:p-5 ${splitMatch ? 'bg-[#f4f8ee] border-[#558b2f]/40' : 'bg-amber-50 border-amber-300'}`}>
+        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">{t.splitTitle}</p>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className={`text-2xl font-bold ${splitMatch ? 'text-emerald-900' : 'text-amber-900'}`}>
+            <p className={`text-2xl font-extrabold ${splitMatch ? 'text-[#0e3b5e]' : 'text-amber-900'}`}>
               🌿 {achievedForage.toFixed(1)}% / ⚙️ {achievedConc.toFixed(1)}%
             </p>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5 font-medium">
               {t.splitTarget}: 🌿 {forageDmPct}% / ⚙️ {100 - forageDmPct}%
             </p>
           </div>
           {!splitMatch && (
-            <p className="text-xs text-amber-800 max-w-xs">
+            <p className="text-xs text-amber-800 max-w-xs font-medium">
               {language === 'en'
                 ? 'Tip: re-run Auto-Formulate in Step 3 to lock the split.'
                 : 'مرحلہ 3 میں آٹو فارمولیٹ دوبارہ چلائیں۔'}
@@ -136,8 +136,8 @@ export function TmrStep4Status({
 
       {/* Whole-diet nutrient list */}
       <div>
-        <h3 className="font-bold text-base mb-2">{t.nutrientsTitle}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <h3 className="font-extrabold text-base text-[#0e3b5e] mb-3">{t.nutrientsTitle}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <StatusRow label={t.cp}  value={nutrients.protein}    unit="%"        range={ranges?.protein}    decimals={1} />
           <StatusRow label={t.me}  value={nutrients.energy}     unit=" Mcal/kg" range={ranges?.energy}     decimals={2} />
           <StatusRow label={t.tdn} value={nutrients.tdn}        unit="%"        range={ranges?.tdn}        decimals={1} />
@@ -157,16 +157,6 @@ export function TmrStep4Status({
         formula={formula}
         forageDmPct={forageDmPct}
       />
-
-      {/* Action buttons */}
-      <div className="flex gap-3 pt-6 sm:pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
-          {t.back}
-        </Button>
-        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
-          {t.next}
-        </Button>
-      </div>
     </motion.div>
   );
 }

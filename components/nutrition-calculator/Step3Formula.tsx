@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Sparkles, AlertTriangle, Lock, Unlock, Coins, Beef, Zap, Target } from 'lucide-react';
-import { FormulaItem, calculateNutrients, calculateTotalCost, calculateTotalWeight } from '@/lib/calculations';
+import { Pencil, Sparkles, AlertTriangle, Lock, Unlock, Coins, Beef, Zap, Target, Check } from 'lucide-react';
+import {
+  FormulaItem,
+  calculateNutrients,
+  calculateTotalCost,
+  calculateTotalWeight,
+} from '@/lib/calculations';
+import { NutrientGrid } from './NutrientGrid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NUTRITION_RANGES, getIngredientIcon, getNutritionRange } from '@/lib/constants';
@@ -26,43 +32,13 @@ interface Step3FormulaProps {
   onAutoBalanceConsumed?: () => void;
 }
 
-function NutrientBadge({
-  label,
-  value,
-  unit,
-  color,
-  range,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  color: string;
-  range?: { min: number; max: number };
-}) {
-  const isInRange = range ? value >= range.min && value <= range.max : false;
-  const bgColor = isInRange ? 'bg-green-500 text-white' : color;
-  const labelColor = isInRange ? 'text-green-50' : 'text-gray-600';
-  const valueColor = isInRange ? 'text-white' : 'text-gray-900';
-
-  return (
-    <motion.div
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className={`${bgColor} px-4 py-3 rounded-lg flex flex-col items-center gap-1 text-center transition-colors duration-300 border ${isInRange ? 'border-green-600' : 'border-transparent'}`}
-    >
-      <span className={`text-xs font-semibold ${labelColor}`}>{label}</span>
-      <span className={`text-lg font-bold ${valueColor}`}>
-        {value.toFixed(1)}
-        <span className="text-xs ml-1">{unit}</span>
-      </span>
-      {range && (
-        <span className={`text-[10px] ${isInRange ? 'text-green-100' : 'text-gray-400'}`}>
-          {range.min}-{range.max}{unit}
-        </span>
-      )}
-    </motion.div>
-  );
-}
+/** Bilingual names for the 4 LP modes, used in the "showing X recipe" line. */
+const MODE_LABEL: Record<OptimisationMode, { en: string; ur: string }> = {
+  min_cost:    { en: 'Cheapest',    ur: 'سستا' },
+  balanced:    { en: 'Balanced',    ur: 'متوازن' },
+  max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین' },
+  max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی' },
+};
 
 export function Step3Formula({
   language,
@@ -97,9 +73,22 @@ export function Step3Formula({
   const animalRanges = selectedAnimal ? NUTRITION_RANGES[selectedAnimal as keyof typeof NUTRITION_RANGES] : null;
   const ranges = animalRanges ? animalRanges[selectedStage] : null;
 
+  /**
+   * Hand-editing a quantity means the numbers on screen are no longer any
+   * mode's output, so drop the "active mode" marker and the diagnostics that
+   * described that solve. Leaving them up would label a hand-tuned recipe as
+   * "Balanced", which is simply untrue.
+   */
+  const clearSolveState = () => {
+    setAfMode(null);
+    setAfDiag(null);
+    setAfPremium(undefined);
+  };
+
   const handleWeightChange = (index: number, newWeight: number) => {
     const updated = [...formula];
     updated[index].kg = Math.max(0, newWeight);
+    clearSolveState();
     onFormulaChange(updated);
   };
 
@@ -111,6 +100,7 @@ export function Step3Formula({
 
   const handleRemove = (index: number) => {
     const updated = formula.filter((_, i) => i !== index);
+    clearSolveState();
     onFormulaChange(updated);
   };
 
@@ -298,72 +288,60 @@ export function Step3Formula({
         </h2>
       </div>
 
-      {/* Nutritional Summary */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-      >
-        <NutrientBadge label={t.protein} value={nutrients.protein} unit="%" color="bg-blue-50" range={ranges?.protein} />
-        <NutrientBadge label={t.energy} value={nutrients.energy} unit="Mcal" color="bg-amber-50" range={ranges?.energy} />
-        <NutrientBadge label={t.tdn} value={nutrients.tdn} unit="%" color="bg-purple-50" range={ranges?.tdn} />
-        <NutrientBadge label={t.fiber} value={nutrients.fiber} unit="%" color="bg-green-50" range={ranges?.fiber} />
+      {/* Shared with Step 4 so the same numbers look the same in both screens. */}
+      <NutrientGrid
+        nutrients={nutrients}
+        ranges={ranges}
+        language={language}
+        untargeted="open"
+      />
 
-        <NutrientBadge label={t.adf} value={nutrients.adf} unit="%" color="bg-indigo-50" />
-        <NutrientBadge label={t.fat} value={nutrients.fat} unit="%" color="bg-orange-50" range={ranges?.fat} />
-        <NutrientBadge label={t.starch} value={nutrients.starch} unit="%" color="bg-yellow-50" />
-        <NutrientBadge label={t.dm} value={nutrients.dm} unit="%" color="bg-slate-50" />
-
-        <NutrientBadge label={t.calcium} value={nutrients.calcium} unit="%" color="bg-red-50" range={ranges?.calcium} />
-        <NutrientBadge label={t.phosphorus} value={nutrients.phosphorus} unit="%" color="bg-cyan-50" range={ranges?.phosphorus} />
-        <NutrientBadge label={t.ash} value={nutrients.ash} unit="%" color="bg-gray-50" />
-      </motion.div>
-      
-      <div className="text-center text-xs text-gray-500 -mt-2">
+      <div className="text-xs text-gray-500 -mt-2">
         {language === 'en'
           ? '*Concentrate mix only (fed with forage/hay/silage). All values on DM basis.'
           : '*صرف کانسنٹریٹ (چارہ/گھاس/سائیلج کے ساتھ)۔ تمام اقدار خشک مادہ پر۔'}
       </div>
 
       {/* Auto-Formulate — least-cost LP solver */}
-      <div className="bg-gradient-to-r from-violet-50 to-fuchsia-50 border-2 border-violet-200 rounded-xl p-4">
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-2xl p-4 sm:p-5 shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-[#0e3b5e]/20">
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-bold text-violet-900">
+              <h4 className="text-sm font-extrabold text-[#0e3b5e]">
                 {language === 'en' ? 'Auto-Formulate' : 'خودکار فارمولا'}
               </h4>
               {(() => {
                 const lockCount = formula.filter((f) => f.locked).length;
                 if (lockCount === 0) return null;
                 return (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                    <Lock className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    <Lock className="w-3 h-3 text-amber-700" />
                     {lockCount} {language === 'en' ? 'locked' : 'مقفل'}
                   </span>
                 );
               })()}
             </div>
-            <p className="text-[11px] text-violet-700/80 leading-relaxed">
-              {formula.some((f) => f.locked)
+            <p className="text-[11px] text-[#0e3b5e]/80 leading-relaxed font-medium">
+              {afMode
                 ? (language === 'en'
-                    ? 'Optimises unlocked ingredients while keeping locked ones fixed.'
-                    : 'غیر مقفل اجزاء کو بہتر کرتا ہے، مقفل اجزاء ثابت رہتے ہیں۔')
-                : (language === 'en'
-                    ? 'Find the cheapest mix that meets all nutrient targets for this animal/stage.'
-                    : 'اس جانور/مرحلے کے لیے سب سے سستا فارمولا خود تلاش کریں۔')}
+                    ? <>Showing the <strong>{MODE_LABEL[afMode].en}</strong> recipe. Tap another to compare.</>
+                    : <>یہ <strong>{MODE_LABEL[afMode].ur}</strong> فارمولا ہے۔ موازنے کے لیے دوسرا دبائیں۔</>)
+                : formula.some((f) => f.locked)
+                  ? (language === 'en'
+                      ? 'Optimises unlocked ingredients while keeping locked ones fixed.'
+                      : 'غیر مقفل اجزاء کو بہتر کرتا ہے، مقفل اجزاء ثابت رہتے ہیں۔')
+                  : (language === 'en'
+                      ? 'Pick how you want the mix optimised for this animal and stage.'
+                      : 'اس جانور اور مرحلے کے لیے فارمولا کیسے بنایا جائے، منتخب کریں۔')}
             </p>
           </div>
         </div>
 
-        {/* 4 optimisation mode buttons — each triggers a different LP objective.
-            Balanced doesn't optimise cost / CP / ME — it pulls every nutrient
-            toward the MIDDLE of its target range, making the recipe robust to
-            small ingredient variation. */}
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* 4 optimisation mode buttons */}
+        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([
             { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',          tipEn: 'Minimise cost',                       tipUr: 'کم قیمت' },
             { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'ہر غذائی جزو کو حد کے درمیان رکھیں' },
@@ -372,23 +350,32 @@ export function Step3Formula({
           ] as const).map((m) => {
             const busy = afBusyMode === m.mode;
             const anyBusy = afBusyMode !== null;
+            const active = afMode === m.mode && !anyBusy;
             return (
               <motion.button
                 key={m.mode}
-                whileHover={!anyBusy ? { scale: 1.03, y: -1 } : undefined}
+                whileHover={!anyBusy ? { scale: 1.02, y: -1 } : undefined}
                 whileTap={!anyBusy ? { scale: 0.97 } : undefined}
                 disabled={anyBusy}
                 onClick={() => handleAutoFormulate(m.mode)}
                 title={language === 'en' ? m.tipEn : m.tipUr}
-                className={`inline-flex flex-col items-center justify-center gap-1 text-[11px] font-bold px-2 py-2.5 rounded-lg transition-all disabled:cursor-not-allowed ${
+                aria-pressed={active}
+                className={`relative inline-flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold px-2.5 py-3 rounded-xl transition-all disabled:cursor-not-allowed ${
                   busy
-                    ? 'bg-gradient-to-br from-violet-700 to-fuchsia-700 text-white shadow-lg ring-2 ring-violet-300'
-                    : anyBusy
-                      ? 'bg-slate-100 text-slate-400'
-                      : 'bg-white text-violet-700 border-2 border-violet-300 hover:bg-gradient-to-br hover:from-violet-600 hover:to-fuchsia-600 hover:text-white hover:border-transparent shadow-sm'
+                    ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-lg ring-2 ring-[#0e3b5e]/30'
+                    : active
+                      ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-md ring-2 ring-[#0e3b5e]/40'
+                      : anyBusy
+                        ? 'bg-white/60 text-slate-400 border border-slate-200'
+                        : 'bg-white text-[#0e3b5e] border border-slate-200 hover:border-[#558b2f] hover:bg-[#f4f8ee] shadow-xs'
                 }`}
               >
-                {busy ? <Sparkles className="w-4 h-4 animate-pulse" /> : m.icon}
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-[#0e3b5e] flex items-center justify-center shadow-xs">
+                    <Check className="w-3 h-3" strokeWidth={3} />
+                  </span>
+                )}
+                {busy ? <Sparkles className="w-4 h-4 animate-pulse text-amber-300" /> : m.icon}
                 <span className="leading-tight text-center">
                   {busy
                     ? (language === 'en' ? 'Optimising…' : 'حساب…')
@@ -404,7 +391,7 @@ export function Step3Formula({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
+              className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[11px] text-amber-900 leading-relaxed"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
               <span className="flex-1">{afError}</span>
@@ -552,16 +539,16 @@ export function Step3Formula({
       </div>
 
       {/* Summary */}
-      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg p-4 border border-emerald-200 space-y-3">
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 rounded-2xl p-4 sm:p-5 border-2 border-[#0e3b5e]/20 space-y-3 shadow-xs">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-gray-600 block mb-1">
+            <label className="text-xs text-slate-600 block mb-1 font-medium">
               {t.total} Weight
-              <span className="ml-1 text-[10px] text-emerald-600 font-medium">
+              <span className="ml-1 text-[10px] text-[#558b2f] font-bold">
                 ({language === 'en' ? 'edit to scale' : 'سکیل کے لیے ترمیم کریں'})
               </span>
             </label>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <input
                 type="number"
                 value={totalWeight || 0}
@@ -569,30 +556,30 @@ export function Step3Formula({
                 disabled={totalWeight === 0}
                 min="0"
                 step="10"
-                className="w-24 text-2xl font-bold text-emerald-700 bg-white/60 border border-emerald-200 rounded-md px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-500 disabled:opacity-50"
+                className="w-24 text-2xl font-extrabold text-[#0e3b5e] bg-white/80 border border-slate-300 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] disabled:opacity-50 shadow-xs"
               />
-              <span className="text-lg font-bold text-emerald-700">kg</span>
+              <span className="text-lg font-bold text-[#0e3b5e]">kg</span>
             </div>
-            <p className="text-xs text-emerald-600 mt-1">as-fed</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-gray-600">{t.total} DM</p>
-            <p className="text-2xl font-bold text-emerald-700">{nutrients.totalDM.toFixed(2)} kg</p>
-            <p className="text-xs text-emerald-600 mt-1">{nutrients.dm}% of as-fed</p>
+            <p className="text-xs text-slate-600 font-medium">{t.total} DM</p>
+            <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">{nutrients.totalDM.toFixed(2)} kg</p>
+            <p className="text-xs text-[#558b2f] mt-1 font-bold">{nutrients.dm}% of as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-gray-600">{t.total} Cost</p>
-            <p className="text-2xl font-bold text-emerald-700">₨{totalCost.toLocaleString('en-PK')}</p>
-            <p className="text-xs text-emerald-600 mt-1">
-              {t.costPerKg}: ₨{nutrients.perKgPrice}
+            <p className="text-xs text-slate-600 font-medium">{t.total} Cost</p>
+            <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">₨{totalCost.toLocaleString('en-PK')}</p>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">
+              {t.costPerKg}: <span className="text-[#0e3b5e] font-bold">₨{nutrients.perKgPrice}</span>
             </p>
           </div>
         </div>
 
         {/* Quick batch-size presets — clicking scales the whole formula */}
         {totalWeight > 0 && (
-          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-emerald-200/60">
-            <span className="text-[11px] font-semibold text-emerald-800">
+          <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-slate-200/80">
+            <span className="text-[11px] font-bold text-[#0e3b5e]">
               {language === 'en' ? 'Scale to batch:' : 'بیچ سائز:'}
             </span>
             {QUICK_BATCH_SIZES.map((s) => {
@@ -601,10 +588,10 @@ export function Step3Formula({
                 <button
                   key={s}
                   onClick={() => handleTotalWeightChange(s)}
-                  className={`text-xs font-semibold px-3 py-1 rounded-full transition-colors ${
+                  className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-white/70 text-emerald-700 hover:bg-white border border-emerald-300'
+                      ? 'bg-[#0e3b5e] text-white shadow-sm'
+                      : 'bg-white/80 text-[#0e3b5e] hover:bg-white border border-[#0e3b5e]/20 hover:border-[#558b2f]'
                   }`}
                 >
                   {s} kg
@@ -613,16 +600,6 @@ export function Step3Formula({
             })}
           </div>
         )}
-      </div>
-
-      {/* Action Buttons — taller tap targets on mobile */}
-      <div className="flex gap-3 pt-6 sm:pt-8">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
-          {t.back}
-        </Button>
-        <Button onClick={onNext} className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent">
-          {t.next}
-        </Button>
       </div>
     </motion.div>
     </>

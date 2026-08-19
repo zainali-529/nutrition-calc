@@ -18,10 +18,10 @@ export function LanguageSwitch({ language, onChange }: LanguageSwitchProps) {
         <button
           key={lang}
           onClick={() => onChange(lang)}
-          className={`px-4 py-2 rounded-full font-semibold text-sm transition-all ${
+          className={`px-3.5 py-1.5 rounded-full font-bold text-xs sm:text-sm transition-all ${
             language === lang
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-[#0e3b5e] text-white shadow-sm'
+              : 'text-slate-600 hover:text-[#0e3b5e]'
           }`}
         >
           {lang === 'en' ? 'English' : 'اردو'}

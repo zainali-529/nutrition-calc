@@ -62,10 +62,11 @@ const COMMERCIAL_FIELDS: Field[] = [
 ];
 
 const CATEGORIES: { value: IngredientCategory; en: string; ur: string; icon: string }[] = [
-  { value: 'energy',  en: 'Energy Source',     ur: 'توانائی کا ذریعہ',  icon: '🌾' },
-  { value: 'protein', en: 'Protein Source',    ur: 'پروٹین کا ذریعہ',   icon: '🫘' },
-  { value: 'fiber',   en: 'Bran / Fiber',      ur: 'چوکر / فائبر',       icon: '🟫' },
-  { value: 'fat',     en: 'Supplement / Mineral', ur: 'سپلیمنٹ / معدنیات', icon: '💊' },
+  { value: 'energy',     en: 'Energy Source',        ur: 'توانائی کا ذریعہ',   icon: '🌾' },
+  { value: 'protein',    en: 'Protein Source',       ur: 'پروٹین کا ذریعہ',    icon: '🫘' },
+  { value: 'fiber',      en: 'Bran / Fiber',         ur: 'چوکر / فائبر',        icon: '🟫' },
+  { value: 'fat',        en: 'Fat / Oil',            ur: 'چکنائی / تیل',        icon: '🛢️' },
+  { value: 'supplement', en: 'Supplement / Mineral', ur: 'سپلیمنٹ / معدنیات',  icon: '💊' },
 ];
 
 type FormState = {

@@ -32,7 +32,12 @@
 // ================================================================================
 
 import solver from 'javascript-lp-solver';
-import { getIngredient, type Ingredient, type NutrientRange } from './constants';
+import {
+  getAllIngredients,
+  getIngredient,
+  type Ingredient,
+  type NutrientRange,
+} from './constants';
 
 /**
  * What the LP solver should optimise for. All modes still respect every
@@ -45,12 +50,11 @@ import { getIngredient, type Ingredient, type NutrientRange } from './constants'
  *   'max_energy'  — most energy-dense (Mcal ME) within the allowed range —
  *                   for fattening bulls / finishing phase
  *   'balanced'    — sits as close to the MIDDLE of every nutrient range as
- *                   possible. Doesn't optimise cost / CP / ME directly;
- *                   instead minimises the weighted sum of |deviations from
- *                   range midpoints|, with each deviation scaled by the
- *                   range width so all nutrients are comparable. The result
- *                   is a recipe that's robust to ingredient variability —
- *                   nothing is pinned at a constraint boundary.
+ *                   possible, so nothing is pinned at a constraint boundary
+ *                   and the recipe tolerates real-world ingredient variation.
+ *                   Implemented by shrinking every target range toward its
+ *                   midpoint as far as it will still solve — see
+ *                   `solveBalancedByTightening()` for why it works this way.
  */
 export type OptimisationMode = 'min_cost' | 'max_protein' | 'max_energy' | 'balanced';
 
@@ -137,18 +141,48 @@ export interface NutrientGap {
 }
 
 /**
+ * A concrete, farmer-facing next step: one ingredient to add.
+ *
+ * `kind` says how strong the recommendation is:
+ *   'exact_fix' — VERIFIED. We re-solved the LP with this ingredient added and
+ *                 it became feasible. Adding this one thing is guaranteed to work.
+ *   'helps'     — this ingredient pushes the blocking nutrient the right way,
+ *                 but on its own it isn't enough (2+ additions needed).
+ */
+export interface IngredientFix {
+  /** Ingredient key to add. */
+  key: string;
+  /** Which Step 2 section the user will find it in. */
+  category: string;
+  kind: 'exact_fix' | 'helps';
+  /** Resulting per-kg price if added (only for 'exact_fix'). Lets the UI rank by cost. */
+  perKgPrice?: number;
+  /** For 'helps': which nutrient this addresses, and which way it moves it. */
+  nutrient?: string;
+  direction?: 'too_low' | 'too_high';
+}
+
+/**
  * Structured form of the infeasibility diagnostic — designed for friendly UIs.
  *
  *   hardBlockers         — nutrients individually unreachable (Pass 1 of the diagnostic)
  *   conflictingNutrients — nutrients that ARE individually reachable but can't all be hit
  *                          together (Pass 2 — relax-and-solve)
- *   suggestedAdditions   — ingredient keys (e.g. 'sbm', 'wheat_grain') that the user
- *                          hasn't selected yet and that would help close the gaps
+ *   suggestedAdditions   — ingredient keys that would help close the gaps (legacy flat list)
+ *   fixes                — the same advice in structured, direction-aware form. This is
+ *                          what UIs should render: it is never empty for an infeasible
+ *                          solve, and 'exact_fix' entries are verified by re-solving.
+ *
+ * NOTE ON REMOVAL: dropping an ingredient can never restore feasibility. Every
+ * ingredient's lower bound is 0, so the solver could already have chosen not to
+ * use it — removing one only shrinks the feasible set. All advice is therefore
+ * additive. Do not tell users to "remove the ingredient that's overloading".
  */
 export interface InfeasibilityAnalysis {
   hardBlockers: NutrientGap[];
   conflictingNutrients: string[];
   suggestedAdditions: string[];
+  fixes: IngredientFix[];
 }
 
 export interface AutoFormulateFailure {
@@ -196,6 +230,16 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     ingredients.push(ing);
   }
 
+  // Locks are needed by both the balanced path and the normal model build.
+  const locks = input.lockedQuantities ?? {};
+
+  // ── Balanced mode is solved by a different method ────────────────────────
+  // It reduces to a sequence of ordinary min/max solves — no auxiliary slack
+  // variables, which is what makes it safe. See the function's own comment.
+  if ((input.mode ?? 'min_cost') === 'balanced') {
+    return solveBalancedByTightening(input, ingredients, batchSize, locks);
+  }
+
   // Build the LP model in the shape javascript-lp-solver expects
   const variables: Record<string, Record<string, number>> = {};
   const constraints: Record<string, { min?: number; max?: number; equal?: number }> = {
@@ -216,44 +260,17 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
 
   // Lock constraints: add an equality constraint `xᵢ = lockedKg` for each
   // locked ingredient. The LP will still find the least-cost mix for the rest.
-  const locks = input.lockedQuantities ?? {};
   for (const [key, lockedKg] of Object.entries(locks)) {
     if (keys.includes(key) && Number.isFinite(lockedKg) && lockedKg >= 0) {
       constraints[`lock_${key}`] = { equal: lockedKg };
     }
   }
 
-  // ── Balanced-mode auxiliary slack variables ─────────────────────────────
-  //
-  // For each constrained nutrient n, we want the recipe to sit at the MIDDLE
-  // of its target range, not at an edge. We linearise this by introducing a
-  // non-negative slack `bal_abs_<nutrient>` that absorbs the deviation from
-  // the range midpoint.  The objective `bal_obj` is the sum of all slacks,
-  // weighted by 1/range_width so a 1-pp CP swing matters as much as a small
-  // ME swing.
-  //
-  //   For each ingredient i and nutrient n with midpoint M, width W:
-  //     coef_dev_n,i  =  dm_i × (val_i − M) / W
-  //
-  //   Two ≤-constraints per nutrient:
-  //     bal_<n>_pos:   SUM_i(coef_dev_n,i × x_i)  −  bal_abs_<n>  ≤  0
-  //     bal_<n>_neg:  −SUM_i(coef_dev_n,i × x_i)  −  bal_abs_<n>  ≤  0
-  //
-  //   Together, this forces  bal_abs_<n> ≥ |dev_n|,  and minimising
-  //   `bal_obj = Σ bal_abs_<n>` pulls every nutrient toward its midpoint.
-  // ────────────────────────────────────────────────────────────────────────
   const mode = input.mode ?? 'min_cost';
-  if (mode === 'balanced') {
-    for (const c of CONSTRAINED) {
-      constraints[`bal_${c.key}_pos`] = { max: 0 };
-      constraints[`bal_${c.key}_neg`] = { max: 0 };
-    }
-  }
 
   // Build each variable's coefficient row. We always track `cost`, `cp_total`,
   // and `me_total` as named objectives so the solver can optimise any one of
-  // them based on the selected mode. For 'balanced', we also add `bal_obj`
-  // and the per-nutrient pos/neg slack-bound coefficients.
+  // them based on the selected mode.
   for (const ing of ingredients) {
     const dm = ing.dm / 100;
     const coef: Record<string, number> = {
@@ -261,7 +278,6 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
       cost:      ing.price ?? 0,              // Rs — for min_cost mode
       cp_total:  dm * (ing.cp ?? 0),          // kg CP contribution — for max_protein mode
       me_total:  dm * (ing.me ?? 0),          // Mcal ME contribution — for max_energy mode
-      bal_obj:   0,                           // ingredients don't contribute directly to bal_obj
     };
 
     // For every nutrient constraint, the coefficient is dm × (value − bound).
@@ -271,15 +287,6 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
       const bound = input.ranges[c.rangeKey];
       coef[`${c.key}_min`] = dm * (value - bound.min);
       coef[`${c.key}_max`] = dm * (value - bound.max);
-
-      // Balanced-mode deviation coefficient (range-width-weighted)
-      if (mode === 'balanced') {
-        const mid   = (bound.min + bound.max) / 2;
-        const width = bound.max - bound.min || 1;  // guard against zero-width ranges
-        const devCoef = dm * (value - mid) / width;
-        coef[`bal_${c.key}_pos`] =  devCoef;
-        coef[`bal_${c.key}_neg`] = -devCoef;
-      }
     }
 
     // Map this ingredient's own cap-constraint: coefficient 1
@@ -294,22 +301,11 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     variables[ing.key] = coef;
   }
 
-  // Add balanced-mode slack variables (one per constrained nutrient)
-  if (mode === 'balanced') {
-    for (const c of CONSTRAINED) {
-      variables[`bal_abs_${c.key}`] = {
-        bal_obj:                1,   // each slack contributes 1 to total deviation objective
-        [`bal_${c.key}_pos`]:  -1,   // bounds positive deviation
-        [`bal_${c.key}_neg`]:  -1,   // bounds negative deviation
-      };
-    }
-  }
-
-  // Pick the objective based on the mode
+  // Pick the objective based on the mode. 'balanced' never reaches here — it is
+  // handled above by solveBalancedByTightening().
   const [optimizeField, opType] =
     mode === 'max_protein' ? ['cp_total', 'max'] as const
   : mode === 'max_energy'  ? ['me_total', 'max'] as const
-  : mode === 'balanced'    ? ['bal_obj',  'min'] as const
   :                          ['cost',     'min'] as const;
 
   const model = {
@@ -357,6 +353,150 @@ export function autoFormulate(input: AutoFormulateInput): AutoFormulateResult {
     perKgPrice: round(totalCost / batchSize, 2),
     diagnostics,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Balanced mode — "centre every nutrient", solved without slack variables
+// ---------------------------------------------------------------------------
+//
+// WHY THIS ISN'T THE TEXTBOOK FORMULATION
+//
+// The obvious way to express "minimise total deviation from each range's
+// midpoint" is to linearise the absolute values with an auxiliary non-negative
+// slack per nutrient (bal_abs_n ≥ |dev_n|) and minimise their sum. That is what
+// this code used to do, and it worked — until it didn't.
+//
+// javascript-lp-solver implements a naive simplex with no anti-cycling rule
+// (no Bland's rule, no perturbation, no iteration cap). The slack formulation
+// is highly degenerate: many bases give the same objective value, which is
+// exactly the condition under which such a solver can pivot in a loop forever.
+// It did: several ordinary selections (e.g. a dairy-cow mix including Bypass
+// Fat 85%) sent `solver.Solve` into an infinite loop. Because this is
+// synchronous client-side JS on the main thread, that isn't a slow solve — it
+// is a frozen browser tab, and Step 3 runs this mode automatically on mount.
+//
+// Rescaling the coefficients did not fix it; it only moved the hang to a
+// different animal/stage. The fix that actually holds is to stop building the
+// degenerate model at all.
+//
+// WHAT THIS DOES INSTEAD
+//
+// "As close to the middle as possible" can be expressed as: shrink every target
+// range toward its own midpoint by a common factor t, and find the largest t
+// that is still satisfiable.
+//
+//     min_t = mid − (mid − min) × (1 − t)
+//     max_t = mid + (max − mid) × (1 − t)
+//
+//   t = 0 → the original range;  t = 1 → collapsed onto the midpoint exactly.
+//
+// Each trial is an ORDINARY min/max model — the same shape as min_cost, which
+// has never been observed to cycle. We bisect on t, keeping the last feasible
+// solution. The inner objective stays least-cost, so among equally well-centred
+// recipes the cheapest wins, which is a useful tie-breaker and also removes the
+// degeneracy that caused the hang.
+//
+// The result is the same thing a farmer wants from "Balanced" — every nutrient
+// pulled off its constraint boundary toward the centre of its window — reached
+// by a method that terminates.
+// ---------------------------------------------------------------------------
+
+/**
+ * Shrink nutrient ranges toward their midpoints.
+ *
+ * `t` may be a single factor applied to every nutrient, or a per-nutrient map
+ * (used by the refinement pass, which tightens each nutrient independently).
+ * Exported so the TMR solver can reuse the identical balanced strategy.
+ */
+export function tightenRanges(
+  ranges: NutrientRange,
+  t: number | Record<string, number>,
+): NutrientRange {
+  const out = {} as NutrientRange;
+  for (const c of CONSTRAINED) {
+    const b = ranges[c.rangeKey];
+    const mid = (b.min + b.max) / 2;
+    const tn = typeof t === 'number' ? t : (t[c.rangeKey] ?? 0);
+    out[c.rangeKey] = {
+      min: mid - (mid - b.min) * (1 - tn),
+      max: mid + (b.max - mid) * (1 - tn),
+    };
+  }
+  return out;
+}
+
+/** How many bisection steps to spend locating the tightest feasible ranges. */
+export const BALANCED_BISECTION_STEPS = 12;
+
+/** Bisection steps per nutrient in the refinement pass (7 nutrients). */
+export const BALANCED_REFINE_STEPS = 8;
+
+function solveBalancedByTightening(
+  input: AutoFormulateInput,
+  ingredients: Ingredient[],
+  batchSize: number,
+  locks: Record<string, number>,
+): AutoFormulateResult {
+  // Step 1 — is the problem solvable at all, at the original ranges?
+  const base = autoFormulate({ ...input, mode: 'min_cost', _skipDiagnosis: true });
+  if (!base.success) {
+    // Infeasible even wide open. Fall back to the normal failure path so the
+    // caller still gets the full diagnosis (unless this is itself a probe).
+    if (input._skipDiagnosis) return { success: false, reason: 'infeasible' };
+    const { summary, analysis } = diagnoseBottleneck(input, ingredients);
+    return { success: false, reason: 'infeasible', bottleneck: summary, analysis };
+  }
+
+  const solve = (ranges: NutrientRange) =>
+    autoFormulate({ ...input, mode: 'min_cost', ranges, _skipDiagnosis: true });
+
+  // Step 2 — find each nutrient's own tightening limit, INDEPENDENTLY.
+  //
+  // A single uniform factor is a trap: some nutrients simply cannot approach
+  // their midpoint with the chosen ingredients (a mix that tops out at 3.1% fat
+  // can never reach a 4.5% midpoint), and one such nutrient pins the uniform
+  // factor near zero, leaving every OTHER nutrient uncentred too. Measuring each
+  // nutrient on its own lets the reachable ones be centred properly.
+  const tvec: Record<string, number> = {};
+  for (const c of CONSTRAINED) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < BALANCED_REFINE_STEPS; i++) {
+      const t = (lo + hi) / 2;
+      if (solve(tightenRanges(input.ranges, { [c.rangeKey]: t })).success) lo = t;
+      else hi = t;
+    }
+    tvec[c.rangeKey] = lo;
+  }
+
+  // Step 3 — apply all the limits together, backing off if they conflict.
+  // Individually-feasible tightenings can be jointly infeasible, so bisect a
+  // single scale factor on the whole vector down to something that solves.
+  let best = base;
+  let sLo = 0, sHi = 1;
+  const scaled = (s: number) => {
+    const v: Record<string, number> = {};
+    for (const c of CONSTRAINED) v[c.rangeKey] = tvec[c.rangeKey] * s;
+    return v;
+  };
+  const full = solve(tightenRanges(input.ranges, scaled(1)));
+  if (full.success) {
+    best = full;
+  } else {
+    for (let i = 0; i < BALANCED_BISECTION_STEPS; i++) {
+      const s = (sLo + sHi) / 2;
+      const trial = solve(tightenRanges(input.ranges, scaled(s)));
+      if (trial.success) { best = trial; sLo = s; } else { sHi = s; }
+    }
+  }
+
+  // Step 4 — recompute diagnostics against the ORIGINAL ranges. `best` was
+  // solved against tightened ones, so its own diagnostics would report
+  // "binding" against bounds the user never asked for.
+  const diagnostics = buildDiagnostics(
+    ingredients, best.quantities, input.ranges, batchSize, locks,
+  );
+
+  return { ...best, diagnostics };
 }
 
 // ---------------------------------------------------------------------------
@@ -478,18 +618,22 @@ function diagnoseBottleneck(
   }
 
   if (hardBlockers.length > 0) {
-    const summary = hardBlockers.map((g) =>
+    const gapText = hardBlockers.map((g) =>
       g.direction === 'too_low'
         ? `${g.nutrient} too low (max achievable ≈ ${g.achievable.toFixed(2)}, need ≥ ${g.required})`
         : `${g.nutrient} too high (min achievable ≈ ${g.achievable.toFixed(2)}, need ≤ ${g.required})`
     ).join('; ');
-    const suggestions = suggestMissingIngredients(ings, hardBlockers.map((g) => g.nutrient));
+    const fixes = buildFixes(input, ings, hardBlockers, []);
+    const summary = fixes.length > 0
+      ? `${gapText} · try adding: ${fixes.map(describeFix).join(' or ')}`
+      : gapText;
     return {
       summary,
       analysis: {
         hardBlockers,
         conflictingNutrients: [],
-        suggestedAdditions: suggestions.map((s) => s.key),
+        suggestedAdditions: fixes.map((f) => f.key),
+        fixes,
       },
     };
   }
@@ -512,6 +656,12 @@ function diagnoseBottleneck(
     const testResult = autoFormulate({
       ...input,
       ranges: relaxed,
+      // min_cost for the same reason as buildFixes' probes: this asks "is the
+      // relaxed problem FEASIBLE?", and the feasible set doesn't depend on the
+      // objective. It also matters for safety — carrying `balanced` in here
+      // built a relaxed slack model that made the solver cycle forever, so a
+      // user pressing Balanced on certain selections hung the whole app.
+      mode: 'min_cost',
       _skipDiagnosis: true,   // prevent recursion
     });
     if (testResult.success) {
@@ -520,17 +670,17 @@ function diagnoseBottleneck(
   }
 
   // -------------------------------------------------------------------------
-  // Pass 3 — ingredient-gap suggestions
-  //   Based on which nutrients seem binding, suggest concrete ingredients.
+  // Pass 3 — ingredient suggestions
+  //   Direction-aware, and validated by re-solving where possible.
   // -------------------------------------------------------------------------
-  const suggestions = suggestMissingIngredients(ings, conflictingNutrients);
+  const fixes = buildFixes(input, ings, [], conflictingNutrients);
 
   const parts: string[] = [];
   if (conflictingNutrients.length > 0) {
     parts.push(`conflicting: ${conflictingNutrients.join(' + ')}`);
   }
-  if (suggestions.length > 0) {
-    parts.push(`try adding: ${suggestions.map((s) => s.description).join(' or ')}`);
+  if (fixes.length > 0) {
+    parts.push(`try adding: ${fixes.map(describeFix).join(' or ')}`);
   }
   const summary = parts.length > 0
     ? parts.join(' · ')
@@ -541,59 +691,157 @@ function diagnoseBottleneck(
     analysis: {
       hardBlockers: [],
       conflictingNutrients,
-      suggestedAdditions: suggestions.map((s) => s.key),
+      suggestedAdditions: fixes.map((f) => f.key),
+      fixes,
     },
   };
 }
 
 /**
- * Suggest concrete ingredient additions based on which nutrient constraints
- * are binding. Returns ingredient keys + a short human-readable description
- * (used by the legacy `bottleneck` string formatter). Matches against a
- * curated list of "high-impact" Pakistani ingredients the user likely hasn't
- * selected yet.
+ * Ingredients the auto-suggester must never recommend, even when the maths says
+ * they'd close the gap fastest.
+ *
+ * `urea` is the whole reason this list exists. It is non-protein nitrogen with a
+ * 287% crude-protein equivalent, so the LP loves it: it's the cheapest way to
+ * lift CP and it wins on cost almost every time. But it is also the only
+ * ingredient here that can kill an animal outright — above ~1.5% of the
+ * concentrate, or unevenly mixed so the animal hits a hot spot, it causes
+ * ammonia toxicity and death within hours, and it must never be fed to calves
+ * under 3 months. Putting it at the top of a "tap this to fix your formula"
+ * list, for an audience that may not read the cap warning, is not acceptable.
+ *
+ * Expert users can still select urea manually in Step 2 — where the ingredient
+ * modal shows its full cap reason — it just won't be volunteered.
  */
-function suggestMissingIngredients(
+const NEVER_SUGGEST = new Set<string>(['urea']);
+
+/**
+ * Build concrete "add this ingredient" advice for an infeasible selection.
+ *
+ * Two passes, strongest first:
+ *
+ *   1. SINGLE-ADDITION SOLVE (verified). Try adding each unselected ingredient
+ *      and re-solve. Anything that flips the LP to feasible is a guaranteed fix,
+ *      so we can tell the user "tap this one thing and you're done" and be right.
+ *      Ranked cheapest-first. This is ~35 tiny solves and only runs when the
+ *      selection is already infeasible, so the cost is a few milliseconds.
+ *
+ *   2. DIRECTION-AWARE FALLBACK. When no single addition is enough, recommend
+ *      ingredients that at least push each blocking nutrient the correct way:
+ *      for a `too_low` nutrient the registry's richest sources, and for a
+ *      `too_high` nutrient the leanest ones (a diluent). Direction matters —
+ *      suggesting a high-energy grain when energy is already over its ceiling
+ *      is worse than saying nothing.
+ */
+function buildFixes(
+  input: AutoFormulateInput,
   selected: Ingredient[],
-  binding: string[],
-): Array<{ key: string; description: string }> {
+  gaps: NutrientGap[],
+  conflicting: string[],
+): IngredientFix[] {
   const selectedKeys = new Set(selected.map((i) => i.key));
-  const tips: Array<{ key: string; description: string }> = [];
+  const candidates = getAllIngredients()
+    .filter((i) => !selectedKeys.has(i.key))
+    .filter((i) => !NEVER_SUGGEST.has(i.key));
 
-  const hasKey = (k: string) => selectedKeys.has(k);
-  const needsMoreProtein = binding.includes('protein') || binding.includes('tdn');
-  const needsLessFibre   = binding.includes('fiber');
-  const needsMoreEnergy  = binding.includes('energy');
-  const needsMoreCalcium = binding.includes('calcium');
-  const needsMorePhos    = binding.includes('phosphorus');
-
-  // High-protein + low-fibre picks (SBM, CGM 60, canola)
-  if (needsMoreProtein || needsLessFibre) {
-    if (!hasKey('sbm')) tips.push({ key: 'sbm', description: 'Soybean Meal (SBM) — 46% CP, low fibre' });
-    else if (!hasKey('corn_gluten_meal')) tips.push({ key: 'corn_gluten_meal', description: 'Corn Gluten Meal 60% — premium protein, very low fibre' });
-    else if (!hasKey('canola_meal')) tips.push({ key: 'canola_meal', description: 'Canola Meal — 36% CP' });
+  // ---- Pass 1: does adding exactly one ingredient make it solvable? ----
+  const exact: IngredientFix[] = [];
+  for (const cand of candidates) {
+    const probe = autoFormulate({
+      ...input,
+      ingredientKeys: [...selectedKeys, cand.key],
+      // Always probe in min_cost, whatever mode the caller asked for.
+      // FEASIBILITY IS INDEPENDENT OF THE OBJECTIVE — the constraint set is
+      // identical across modes, so a cheaper, smaller model answers the same
+      // question. This also keeps `balanced`'s auxiliary slack variables out of
+      // the probe loop (they make the model ~2x bigger and worse-conditioned),
+      // and makes the reported perKgPrice a true least-cost figure.
+      mode: 'min_cost',
+      _skipDiagnosis: true,          // never recurse into diagnosis from a probe
+    });
+    if (probe.success) {
+      exact.push({
+        key: cand.key,
+        category: cand.category,
+        kind: 'exact_fix',
+        perKgPrice: probe.perKgPrice,
+      });
+    }
+  }
+  if (exact.length > 0) {
+    // Cheapest first — the farmer should see the most affordable fix at the top.
+    exact.sort((a, b) => (a.perKgPrice ?? 0) - (b.perKgPrice ?? 0));
+    return dedupeByCategory(exact, 4);
   }
 
-  // High-energy picks
-  if (needsMoreEnergy) {
-    if (!hasKey('wheat_grain')) tips.push({ key: 'wheat_grain', description: 'Wheat Grain — 3.28 Mcal/kg DM' });
-    if (!hasKey('bypassFat'))   tips.push({ key: 'bypassFat',   description: 'Bypass Fat — 4.78 Mcal/kg DM' });
+  // ---- Pass 2: no single ingredient is enough — push each nutrient the right way ----
+  const targets: Array<{ nutrient: string; direction: 'too_low' | 'too_high' }> = [
+    ...gaps.map((g) => ({ nutrient: g.nutrient, direction: g.direction })),
+    // Conflicting nutrients have no direction from Pass 2; treat as 'too_low',
+    // the far more common case for a farmer who hasn't picked enough variety.
+    ...conflicting
+      .filter((n) => !gaps.some((g) => g.nutrient === n))
+      .map((n) => ({ nutrient: n, direction: 'too_low' as const })),
+  ];
+
+  const helps: IngredientFix[] = [];
+  for (const { nutrient, direction } of targets) {
+    const spec = CONSTRAINED.find((c) => c.key === nutrient);
+    if (!spec) continue;
+
+    const pool = candidates.filter((i) => {
+      if (direction === 'too_low') return i[spec.field] > 0;   // must actually supply it
+      // Bringing a nutrient DOWN means diluting with a real feedstuff. A pure
+      // mineral or neat oil technically dilutes energy too, but "add limestone
+      // to lower energy" is nonsense advice to a farmer — require the candidate
+      // to carry protein or fibre so the suggestion is a genuine feed swap.
+      return i.cp > 0 || i.ndf > 0;
+    });
+
+    // Rank by DM-weighted contribution, scaled by how much of the ingredient may
+    // legally be used — something capped at 1% cannot shift a total meaningfully.
+    const ranked = pool
+      .map((i) => ({
+        ing: i,
+        power: i[spec.field] * (i.dm / 100) * Math.min(i.maxInclusion, 50),
+      }))
+      .sort((a, b) => (direction === 'too_low' ? b.power - a.power : a.power - b.power));
+
+    // One suggestion per nutrient, so a 4-item list covers 4 different problems
+    // rather than four ways to add protein.
+    const pick = ranked.find(({ ing }) => !helps.some((h) => h.key === ing.key));
+    if (pick) {
+      helps.push({ key: pick.ing.key, category: pick.ing.category, kind: 'helps', nutrient, direction });
+    }
   }
 
-  // Fibre too high → alternative low-fibre options
-  if (needsLessFibre) {
-    if (!hasKey('broken_rice')) tips.push({ key: 'broken_rice', description: 'Broken Rice (Tukri) — very low fibre, high starch' });
-  }
+  return helps.slice(0, 4);
+}
 
-  // Mineral gaps
-  if (needsMoreCalcium && !hasKey('limestone')) {
-    tips.push({ key: 'limestone', description: 'Limestone — 36% Ca' });
+/**
+ * Trim a fix list so the user sees variety rather than four near-identical
+ * options — at most 2 from any single category, capped at `limit` overall.
+ */
+function dedupeByCategory(fixes: IngredientFix[], limit: number): IngredientFix[] {
+  const perCategory = new Map<string, number>();
+  const out: IngredientFix[] = [];
+  for (const f of fixes) {
+    const n = perCategory.get(f.category) ?? 0;
+    if (n >= 2) continue;
+    perCategory.set(f.category, n + 1);
+    out.push(f);
+    if (out.length >= limit) break;
   }
-  if (needsMorePhos && !hasKey('dcp')) {
-    tips.push({ key: 'dcp', description: 'DCP — 18% P + 22% Ca' });
-  }
+  return out;
+}
 
-  return tips.slice(0, 3); // cap to top 3 to keep message short
+/** Short human-readable label for the legacy `bottleneck` string. */
+function describeFix(fix: IngredientFix): string {
+  const ing = getIngredient(fix.key);
+  const name = ing?.nameEn ?? fix.key;
+  if (fix.kind === 'exact_fix') return `${name} (${fix.category})`;
+  const dir = fix.direction === 'too_low' ? 'raises' : 'lowers';
+  return `${name} — ${dir} ${fix.nutrient}`;
 }
 
 /**

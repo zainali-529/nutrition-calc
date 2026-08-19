@@ -39,7 +39,7 @@ export function markOnboardingSeen(): void {
  */
 export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalProps) {
   const t = {
-    title:    language === 'en' ? 'Welcome to Farm Nutrition' : 'فارم غذائیت میں خوش آمدید',
+    title:    language === 'en' ? 'Welcome to RumiCalc' : 'رومی کیلک (RumiCalc) میں خوش آمدید',
     subtitle: language === 'en'
       ? 'Build a healthy, low-cost feed mix for your cow, buffalo, or goat — in 5 quick steps.'
       : 'اپنی گائے، بھینس یا بکری کے لیے صحت مند اور سستا فارمولا بنائیں — صرف 5 آسان مراحل میں۔',
@@ -93,7 +93,7 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
           >
             <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-600 px-6 py-6 sm:py-8 text-white flex-shrink-0">
+              <div className="relative bg-gradient-to-br from-emerald-600 via-emerald-700 to-[#0e3b5e] px-6 py-6 sm:py-8 text-white flex-shrink-0">
                 <button
                   onClick={onClose}
                   className="absolute top-3 right-3 p-2 rounded-lg hover:bg-white/20 transition-colors tap-transparent"
@@ -101,10 +101,14 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <span className="text-4xl sm:text-5xl">🌾</span>
+                <div className="flex items-center gap-3.5 sm:gap-4">
+                  <img
+                    src="/rumicalc-logo.png"
+                    alt="RumiCalc Logo"
+                    className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-2xl bg-white p-1.5 shadow-lg flex-shrink-0"
+                  />
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold leading-tight">{t.title}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold leading-tight tracking-tight">{t.title}</h2>
                     <p className="text-sm sm:text-base text-emerald-50/95 mt-1 leading-snug">{t.subtitle}</p>
                   </div>
                 </div>
@@ -136,10 +140,17 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
                   })}
                 </ol>
 
-                {/* Bilingual note */}
-                <div className="mt-5 sm:mt-6 flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                  <Languages className="w-4 h-4 flex-shrink-0" />
-                  <span>{t.bilingualNote}</span>
+                {/* Bilingual note & Powered by badge */}
+                <div className="mt-5 sm:mt-6 space-y-2">
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+                      <Languages className="w-3.5 h-3.5 text-[#558b2f]" />
+                      <span>{t.bilingualNote}</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/15 px-2.5 py-0.5 rounded-full">
+                      {language === 'en' ? 'Powered by Sabtain Animal Talk' : 'پیشکش: سبطین اینیمل ٹاک'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -147,7 +158,7 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
               <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                 <Button
                   onClick={onClose}
-                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base tap-transparent"
+                  className="w-full h-12 bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold text-base rounded-xl shadow-md shadow-[#0e3b5e]/20 tap-transparent"
                 >
                   {t.cta} →
                 </Button>

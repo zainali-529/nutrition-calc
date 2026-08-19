@@ -58,19 +58,19 @@ function TargetCard({
       key={JSON.stringify(range)} // re-animate when range changes
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-4"
+      className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-xl p-4 sm:p-5 shadow-xs"
     >
-      <h4 className="text-sm font-bold text-emerald-900 mb-1 flex items-center gap-2">
+      <h4 className="text-sm font-extrabold text-[#0e3b5e] mb-1 flex items-center gap-2">
         <span className="text-lg">🎯</span>
         {t.title}
       </h4>
-      <p className="text-[11px] text-emerald-700/80 mb-3 leading-relaxed">{t.subtitle}</p>
+      <p className="text-[11px] text-[#0e3b5e]/80 mb-3 leading-relaxed">{t.subtitle}</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {items.map((item) => (
-          <div key={item.label} className={`border rounded-md px-2 py-1.5 ${item.color}`}>
+          <div key={item.label} className={`border rounded-lg px-2.5 py-2 ${item.color}`}>
             <div className="text-[10px] font-semibold opacity-80">{item.label}</div>
-            <div className="text-xs font-bold">{item.value}</div>
+            <div className="text-xs font-bold mt-0.5">{item.value}</div>
           </div>
         ))}
       </div>
@@ -84,7 +84,7 @@ function AnimalCard({
   language,
   onSelect,
 }: {
-  animal: { id: string; icon: string; labelEn: string; labelUr: string };
+  animal: { id: string; icon: string; image?: string; labelEn: string; labelUr: string };
   selected: boolean;
   language: 'en' | 'ur';
   onSelect: () => void;
@@ -94,14 +94,24 @@ function AnimalCard({
       onClick={onSelect}
       whileHover={{ scale: 1.03, y: -3 }}
       whileTap={{ scale: 0.97 }}
-      className={`relative overflow-hidden rounded-xl border-2 transition-all p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] ${
+      className={`relative overflow-hidden rounded-2xl border-2 transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center gap-2.5 min-h-[135px] group ${
         selected
-          ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-200'
-          : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md'
+          ? 'border-[#558b2f] bg-[#f4f8ee] shadow-lg shadow-[#558b2f]/20 ring-1 ring-[#558b2f]'
+          : 'border-slate-200 bg-white hover:border-[#0e3b5e]/40 hover:shadow-md'
       }`}
     >
-      <span className="text-5xl leading-none">{animal.icon}</span>
-      <span className={`text-xs font-semibold text-center leading-tight ${selected ? 'text-emerald-900' : 'text-gray-800'}`}>
+      {animal.image ? (
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+          <img
+            src={animal.image}
+            alt={animal.labelEn}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <span className="text-5xl leading-none">{animal.icon}</span>
+      )}
+      <span className={`text-xs font-bold text-center leading-tight ${selected ? 'text-[#0e3b5e]' : 'text-slate-800'}`}>
         {animal[language === 'en' ? 'labelEn' : 'labelUr']}
       </span>
 
@@ -109,7 +119,7 @@ function AnimalCard({
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
-          className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow"
+          className="absolute top-2.5 right-2.5 w-6 h-6 bg-[#558b2f] text-white rounded-full flex items-center justify-center text-xs font-extrabold shadow-sm z-10"
         >
           ✓
         </motion.div>
@@ -139,9 +149,10 @@ export function Step1Animal({
     selectStage:  language === 'en' ? 'Select Production Stage' : 'پیداواری مرحلہ منتخب کریں',
     next:         language === 'en' ? 'Next' : 'اگلا',
     back:         language === 'en' ? 'Back' : 'واپس',
+    // The TMR calculator has shipped (/tmr) — this used to say "coming soon".
     concentrateBanner: language === 'en'
-      ? 'Building a CONCENTRATE mix — fed with fresh forage, hay, or silage. (TMR support coming soon.)'
-      : 'آپ ایک کانسنٹریٹ فارمولا بنا رہے ہیں — سبز چارہ، گھاس یا سائیلج کے ساتھ دیا جاتا ہے۔',
+      ? 'Building a CONCENTRATE mix — fed with fresh forage, hay, or silage. For a complete diet, use the TMR calculator in the header.'
+      : 'آپ ایک کانسنٹریٹ فارمولا بنا رہے ہیں — سبز چارہ، گھاس یا سائیلج کے ساتھ۔ مکمل راشن کے لیے اوپر TMR کیلکولیٹر استعمال کریں۔',
   };
 
   return (
@@ -159,14 +170,14 @@ export function Step1Animal({
       )}
 
       {/* Concentrate-vs-TMR Banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
+      <div className="bg-amber-50/80 border border-amber-200/90 rounded-xl px-4 py-3 flex items-start gap-3 shadow-xs">
         <span className="text-xl flex-shrink-0 leading-tight">🌾</span>
-        <p className="text-xs text-amber-900 leading-relaxed">{t.concentrateBanner}</p>
+        <p className="text-xs text-amber-900 leading-relaxed font-medium">{t.concentrateBanner}</p>
       </div>
 
       {/* Animal Selection */}
       <div>
-        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-extrabold text-[#0e3b5e] mb-4 flex items-center gap-2">
           <span className="text-2xl">🐄</span>
           {t.selectAnimal}
         </h3>
@@ -186,21 +197,21 @@ export function Step1Animal({
       {/* Stage Selection */}
       {selectedAnimal && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-extrabold text-[#0e3b5e] mb-4 flex items-center gap-2">
             <span className="text-2xl">📅</span>
             {t.selectStage}
           </h3>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2.5">
             {stageLabels.map((stage, idx) => (
               <motion.button
                 key={idx}
                 onClick={() => onStageSelect(idx)}
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                className={`min-h-[48px] px-4 py-3 rounded-lg border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
+                className={`min-h-[48px] px-4 py-3 rounded-xl border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
                   selectedStage === idx
-                    ? 'border-violet-500 bg-violet-50 text-violet-900'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-violet-300'
+                    ? 'border-[#0e3b5e] bg-[#0e3b5e]/5 text-[#0e3b5e] font-bold shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-[#0e3b5e]/40'
                 }`}
               >
                 {stage}
@@ -212,22 +223,6 @@ export function Step1Animal({
 
       {/* Target-Range Preview */}
       {activeRange && <TargetCard language={language} range={activeRange} />}
-
-      {/* Action Buttons — taller tap targets on mobile */}
-      <div className="flex gap-3 pt-6 sm:pt-8">
-        {onBack && (
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-10 tap-transparent">
-            {t.back}
-          </Button>
-        )}
-        <Button
-          onClick={onNext}
-          disabled={!isComplete}
-          className="flex-1 h-12 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white tap-transparent"
-        >
-          {t.next}
-        </Button>
-      </div>
     </motion.div>
   );
 }

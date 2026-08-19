@@ -20,7 +20,7 @@
 // Total Qty = 156 kg (CP 24.377%, ME 2.980 Mcal/kg DM, TDN 79.281%, etc.)
 // ================================================================================
 
-import { getIngredient, NutrientRange } from './constants';
+import { CATEGORY_KEYS, getIngredient, type Ingredient, NutrientRange } from './constants';
 
 export interface FormulaItem {
   name: string;
@@ -62,6 +62,25 @@ export interface NutrientCalculation {
   perKgPrice: number;  // Rs per kg of as-fed mix
 }
 
+/**
+ * How many decimals each result field is DISPLAYED with, everywhere.
+ *
+ * One definition, because two of them caused a visible contradiction: the Step
+ * 3/4 nutrient cards printed CP as "23.7%" while the background-calculation
+ * sheet printed the same number as "23.71%". Nothing was actually wrong — the
+ * card rounded to 1 dp and the sheet to 2 — but a user comparing the two screens
+ * reasonably reads that as the calculator disagreeing with itself, which is
+ * fatal for a feature whose whole job is to be trusted and checked by hand.
+ *
+ * These match the precision `calculateNutrients` itself rounds to below, so the
+ * displayed digits are the app's canonical value with nothing hidden.
+ */
+export const NUTRIENT_DP: Record<keyof NutrientCalculation, number> = {
+  protein: 2, energy: 3, tdn: 2, adf: 2, fiber: 2, fat: 2, starch: 2,
+  calcium: 3, phosphorus: 3, ash: 2, dm: 2,
+  totalAsFed: 2, totalDM: 2, cost: 0, perKgPrice: 2,
+};
+
 const EMPTY: NutrientCalculation = {
   protein: 0, energy: 0, tdn: 0, adf: 0, fiber: 0, fat: 0,
   starch: 0, calcium: 0, phosphorus: 0, ash: 0, dm: 0,
@@ -76,74 +95,171 @@ const round = (value: number, decimals: number): number => {
   return Math.round(value * factor) / factor;
 };
 
+// ================================================================================
+// CALCULATION TRACE — the working shown to the user
+// ================================================================================
+// The "See background calculation" sheet in Step 5 must show the SAME arithmetic
+// the app actually performed. Re-deriving it in the UI would risk an audit sheet
+// that quietly disagrees with the result it claims to explain — teaching users
+// something false, which is worse than showing nothing.
+//
+// So the trace is the single implementation: `buildCalculationTrace` does the
+// per-ingredient work, and `calculateNutrients` is a thin wrapper that rounds its
+// totals. Any change to the maths necessarily changes both together.
+// ================================================================================
+
+/** The nutrient columns that carry a % concentration on DM basis. */
+export const TRACE_NUTRIENTS = [
+  { key: 'cp',     label: 'CP',     resultKey: 'protein'    },
+  { key: 'tdn',    label: 'TDN',    resultKey: 'tdn'        },
+  { key: 'adf',    label: 'ADF',    resultKey: 'adf'        },
+  { key: 'ndf',    label: 'NDF',    resultKey: 'fiber'      },
+  { key: 'fat',    label: 'Fat',    resultKey: 'fat'        },
+  { key: 'starch', label: 'Starch', resultKey: 'starch'     },
+  { key: 'ca',     label: 'Ca',     resultKey: 'calcium'    },
+  { key: 'p',      label: 'P',      resultKey: 'phosphorus' },
+  { key: 'ash',    label: 'Ash',    resultKey: 'ash'        },
+] as const satisfies ReadonlyArray<{
+  key: keyof Pick<Ingredient, 'cp' | 'tdn' | 'adf' | 'ndf' | 'fat' | 'starch' | 'ca' | 'p' | 'ash'>;
+  label: string;
+  resultKey: keyof NutrientCalculation;
+}>;
+
+export type TraceNutrientKey = (typeof TRACE_NUTRIENTS)[number]['key'];
+
+/** One ingredient's contribution, with every intermediate value kept. */
+export interface TraceRow {
+  key: string;
+  name: string;
+  /** As-fed kg the user entered. */
+  qty: number;
+  /** The ingredient's DM percentage from the registry. */
+  dmPct: number;
+  /** qty × dmPct / 100 — the dry matter this ingredient contributes. */
+  dmKg: number;
+  /** Registry percentage per nutrient, as looked up. */
+  pct: Record<TraceNutrientKey, number>;
+  /** dmKg × pct / 100 — absolute kg of each nutrient contributed. */
+  kg: Record<TraceNutrientKey, number>;
+  /** ME is Mcal per kg DM, so it multiplies dmKg directly (no /100). */
+  mePerKgDm: number;
+  meMcal: number;
+  /** Price actually used (per-formula override wins over the registry). */
+  unitPrice: number;
+  cost: number;
+}
+
+export interface CalculationTrace {
+  rows: TraceRow[];
+  totals: {
+    qty: number;
+    dmKg: number;
+    kg: Record<TraceNutrientKey, number>;
+    meMcal: number;
+    cost: number;
+  };
+  /** Unrounded concentrations, before `calculateNutrients` rounds them. */
+  raw: {
+    pct: Record<TraceNutrientKey, number>;
+    mePerKgDm: number;
+    dmPct: number;
+    perKgPrice: number;
+  };
+}
+
+const zeroed = (): Record<TraceNutrientKey, number> =>
+  Object.fromEntries(TRACE_NUTRIENTS.map((n) => [n.key, 0])) as Record<TraceNutrientKey, number>;
+
 /**
- * Compute all nutrient totals for a given formula on DM basis.
- * Verified against the Google Sheet reference calculator.
+ * Walk the formula and keep every intermediate number.
+ *
+ * Rows with an unknown key or a non-positive quantity are skipped, exactly as
+ * `calculateNutrients` skips them — the sheet must not list an ingredient that
+ * contributed nothing to the result.
  */
-export function calculateNutrients(formula: FormulaItem[]): NutrientCalculation {
-  // Running sums in absolute kg (nutrients) / Mcal (energy) / Rs (cost)
-  let totalAsFed = 0;
-  let totalDM = 0;
-  let cpKg = 0;
-  let meMcal = 0;
-  let tdnKg = 0;
-  let adfKg = 0;
-  let ndfKg = 0;
-  let fatKg = 0;
-  let starchKg = 0;
-  let caKg = 0;
-  let pKg = 0;
-  let ashKg = 0;
-  let cost = 0;
+export function buildCalculationTrace(formula: FormulaItem[]): CalculationTrace {
+  const rows: TraceRow[] = [];
+  const totals = { qty: 0, dmKg: 0, kg: zeroed(), meMcal: 0, cost: 0 };
 
   for (const item of formula) {
     const data = getIngredient(item.key);
     if (!data) continue;                       // skip unknown keys (e.g. placeholders)
-
-    const qty = item.kg;                       // as-fed kg
+    const qty = item.kg;
     if (qty <= 0) continue;
 
-    const dmKg = qty * (data.dm / 100);        // kg of dry matter
+    const dmKg = qty * (data.dm / 100);
+    const pct = zeroed();
+    const kg = zeroed();
+    for (const n of TRACE_NUTRIENTS) {
+      pct[n.key] = data[n.key];
+      kg[n.key] = dmKg * (data[n.key] / 100);
+      totals.kg[n.key] += kg[n.key];
+    }
 
-    totalAsFed += qty;
-    totalDM   += dmKg;
-
-    // Per-ingredient nutrient kg (all composition values are DM basis)
-    cpKg     += dmKg * (data.cp     / 100);
-    meMcal   += dmKg * data.me;                // ME is Mcal per kg DM (no /100)
-    tdnKg    += dmKg * (data.tdn    / 100);
-    adfKg    += dmKg * (data.adf    / 100);
-    ndfKg    += dmKg * (data.ndf    / 100);
-    fatKg    += dmKg * (data.fat    / 100);
-    starchKg += dmKg * (data.starch / 100);
-    caKg     += dmKg * (data.ca     / 100);
-    pKg      += dmKg * (data.p      / 100);
-    ashKg    += dmKg * (data.ash    / 100);
-
-    // Cost is as-fed (what the farmer pays). Override price wins over registry.
+    const meMcal = dmKg * data.me;             // ME is already per-kg-DM
     const unitPrice = item.price ?? data.price ?? 0;
-    cost += qty * unitPrice;
+    const cost = qty * unitPrice;
+
+    totals.qty += qty;
+    totals.dmKg += dmKg;
+    totals.meMcal += meMcal;
+    totals.cost += cost;
+
+    rows.push({
+      key: item.key,
+      name: item.name || data.nameEn,
+      qty, dmPct: data.dm, dmKg,
+      pct, kg,
+      mePerKgDm: data.me, meMcal,
+      unitPrice, cost,
+    });
   }
 
-  if (totalDM === 0) return EMPTY;
+  const pctOut = zeroed();
+  if (totals.dmKg > 0) {
+    for (const n of TRACE_NUTRIENTS) pctOut[n.key] = (totals.kg[n.key] / totals.dmKg) * 100;
+  }
 
-  // Concentrations = absolute kg / Total DM × 100 (on DM basis)
   return {
-    protein:    round((cpKg     / totalDM) * 100, 2),
-    energy:     round( meMcal   / totalDM,        3),
-    tdn:        round((tdnKg    / totalDM) * 100, 2),
-    adf:        round((adfKg    / totalDM) * 100, 2),
-    fiber:      round((ndfKg    / totalDM) * 100, 2),
-    fat:        round((fatKg    / totalDM) * 100, 2),
-    starch:     round((starchKg / totalDM) * 100, 2),
-    calcium:    round((caKg     / totalDM) * 100, 3),
-    phosphorus: round((pKg      / totalDM) * 100, 3),
-    ash:        round((ashKg    / totalDM) * 100, 2),
-    dm:         round((totalDM  / totalAsFed) * 100, 2),
-    totalAsFed: round(totalAsFed, 2),
-    totalDM:    round(totalDM,    2),
-    cost:       Math.round(cost),
-    perKgPrice: round(cost / totalAsFed, 2),
+    rows,
+    totals,
+    raw: {
+      pct: pctOut,
+      mePerKgDm: totals.dmKg > 0 ? totals.meMcal / totals.dmKg : 0,
+      dmPct: totals.qty > 0 ? (totals.dmKg / totals.qty) * 100 : 0,
+      perKgPrice: totals.qty > 0 ? totals.cost / totals.qty : 0,
+    },
+  };
+}
+
+/**
+ * Compute all nutrient totals for a given formula on DM basis.
+ * Verified against the Google Sheet reference calculator.
+ *
+ * Thin wrapper over `buildCalculationTrace` — see the note above on why there is
+ * only one implementation.
+ */
+export function calculateNutrients(formula: FormulaItem[]): NutrientCalculation {
+  const trace = buildCalculationTrace(formula);
+  if (trace.totals.dmKg === 0) return EMPTY;
+  const { raw, totals } = trace;
+
+  return {
+    protein:    round(raw.pct.cp,     2),
+    energy:     round(raw.mePerKgDm,  3),
+    tdn:        round(raw.pct.tdn,    2),
+    adf:        round(raw.pct.adf,    2),
+    fiber:      round(raw.pct.ndf,    2),
+    fat:        round(raw.pct.fat,    2),
+    starch:     round(raw.pct.starch, 2),
+    calcium:    round(raw.pct.ca,     3),
+    phosphorus: round(raw.pct.p,      3),
+    ash:        round(raw.pct.ash,    2),
+    dm:         round(raw.dmPct,      2),
+    totalAsFed: round(totals.qty,     2),
+    totalDM:    round(totals.dmKg,    2),
+    cost:       Math.round(totals.cost),
+    perKgPrice: round(raw.perKgPrice, 2),
   };
 }
 
@@ -154,12 +270,9 @@ export function calculateNutrients(formula: FormulaItem[]): NutrientCalculation 
 export function buildFormula(
   selectedIngredients: Record<string, string[]>
 ): FormulaItem[] {
-  const items = [
-    ...(selectedIngredients.energy  || []),
-    ...(selectedIngredients.protein || []),
-    ...(selectedIngredients.fiber   || []),
-    ...(selectedIngredients.fat     || []),
-  ];
+  // Flatten every category bucket in display order. Driven by CATEGORY_KEYS so
+  // a new category is picked up automatically rather than silently dropped.
+  const items = CATEGORY_KEYS.flatMap((cat) => selectedIngredients[cat] || []);
 
   if (items.length === 0) return [];
 
@@ -310,8 +423,8 @@ export function generateRecommendations(
 /** Plain-text export for WhatsApp / clipboard sharing. */
 export function exportFormulaAsText(formula: FormulaItem[], language: 'en' | 'ur' = 'en'): string {
   const header = language === 'ur'
-    ? 'فارمولا Report\n' + '='.repeat(40) + '\n'
-    : 'Formula Report\n' + '='.repeat(40) + '\n';
+    ? '🌾 رومی کیلک (RumiCalc) — فارمولا رپورٹ\nپیشکش: سبطین اینیمل ٹاک (Sabtain Animal Talk)\n' + '='.repeat(40) + '\n'
+    : '🌾 RumiCalc — Livestock Formula Report\nPowered by Sabtain Animal Talk\n' + '='.repeat(40) + '\n';
 
   const items = formula.map((f) => `• ${f.name}: ${f.kg.toFixed(1)} kg`).join('\n');
 
@@ -350,7 +463,7 @@ export function generatePDFContent(
   const n = calculateNutrients(formula);
 
   return `
-NUTRITION CALCULATOR - FORMULA REPORT
+RUMICALC - LIVESTOCK FORMULA REPORT
 Animal: ${animal}
 Stage:  ${stage}
 Date:   ${new Date().toLocaleDateString()}
