@@ -1227,20 +1227,6 @@ export function Step2Ingredients({
                       : 'منتخب کرتے رہیں — ہدف پورے ہونے پر Next کھل جائے گا۔')}
           </p>
         )}
-
-        {/* Action Buttons — taller tap targets on mobile (min 48 px) */}
-        <div className="flex gap-3 pt-4 sm:pt-6">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
-            {t.back}
-          </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!canProceed}
-            className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent disabled:opacity-50"
-          >
-            {t.next}
-          </Button>
-        </div>
       </motion.div>
     </>
   );

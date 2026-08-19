@@ -11,7 +11,8 @@ import { Footer } from '@/components/Footer';
 import { STAGES } from '@/lib/constants';
 import { buildTmrFormula, type TmrFormulaItem } from '@/lib/tmrCalculations';
 import { getAnyIngredient, isForage } from '@/lib/forages';
-import { getDefaultForagePct } from '@/lib/tmrRanges';
+import { tmrFormulate } from '@/lib/tmrFormulate';
+import { getDefaultForagePct, getTmrNutritionRange } from '@/lib/tmrRanges';
 import { TmrStep1AnimalSplit } from './TmrStep1AnimalSplit';
 import { TmrStep2Ingredients } from './TmrStep2Ingredients';
 import { TmrStep3Formula } from './TmrStep3Formula';
@@ -58,7 +59,7 @@ export function TmrCalculator() {
   // Step 1 state — animal/stage + DM split (forage % on DM basis)
   const [selectedAnimal, setSelectedAnimal] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState(0);
-  const [forageDmPct, setForageDmPct] = useState(60); // user-editable; default depends on animal/stage
+  const [forageDmPct, setForageDmPct] = useState(60);
 
   // Step 2 state — tabbed selection of forages + concentrates
   const [selectedForages, setSelectedForages] = useState<string[]>([]);
@@ -67,9 +68,6 @@ export function TmrCalculator() {
   // Step 3 state — the actual recipe (kg / price per ingredient)
   const [formula, setFormula] = useState<TmrFormulaItem[]>([]);
 
-  // Transient flag: when the user enters Step 3 with a freshly-built formula
-  // (not a back-navigation, not a loaded save), we auto-run the Balanced LP
-  // so they see a sensible TMR starting recipe instead of even-distribution.
   const [autoBalanceOnMount, setAutoBalanceOnMount] = useState(false);
 
   // Saved formulas modal
@@ -112,8 +110,6 @@ export function TmrCalculator() {
   }, []);
 
   // ── Step 3 handler ────────────────────────────────────────────────────────
-  // When the user removes an item via the X icon in Step 3, sync it back to
-  // the Step 2 selection so going Back doesn't show an inconsistent state.
   const handleFormulaChange = useCallback((next: TmrFormulaItem[]) => {
     setFormula((prev) => {
       const newKeys = new Set(next.map((i) => i.key));
@@ -133,9 +129,6 @@ export function TmrCalculator() {
 
   // ── Wizard navigation ─────────────────────────────────────────────────────
   const handleNextStep = useCallback(() => {
-    // Step 2 → Step 3: build / merge formula from current selection.
-    // On a TRULY-fresh Step 3 entry (no prior formula), set the auto-balance
-    // flag so Step 3 auto-runs the Balanced LP for a sensible starting TMR.
     if (currentStep === 1) {
       const wasEmpty = formula.length === 0;
       setFormula((prev) => mergeTmrFormulaWithSelection(prev, selectedForages, selectedConcentrates));
@@ -178,7 +171,6 @@ export function TmrCalculator() {
     setCompletedSteps([0, 1]);
     setCurrentStep(2);
     setSavedOpen(false);
-    // Loading a saved TMR — don't run Balanced over it.
     setAutoBalanceOnMount(false);
   }, []);
 
@@ -196,39 +188,66 @@ export function TmrCalculator() {
       ? STAGES[selectedAnimal as keyof typeof STAGES][language][selectedStage] ?? ''
       : '';
 
+  const canProceedCurrentStep = (() => {
+    if (currentStep === 0) return selectedAnimal !== null;
+    if (currentStep === 1) {
+      if (!selectedAnimal) return false;
+      const ranges = getTmrNutritionRange(selectedAnimal, selectedStage);
+      if (!ranges) return false;
+
+      const needForage = forageDmPct > 0 && selectedForages.length === 0;
+      const needConcentrate = forageDmPct < 100 && selectedConcentrates.length === 0;
+      if (needForage || needConcentrate) return false;
+
+      const result = tmrFormulate({
+        ingredientKeys: [...selectedForages, ...selectedConcentrates],
+        ranges,
+        forageDmPct,
+      });
+      return result.success;
+    }
+    if (currentStep === 2) return formula.length > 0;
+    if (currentStep === 3) return true;
+    return true;
+  })();
+
   return (
-    <div className="min-h-screen relative pb-safe-bottom">
+    <div className="min-h-screen">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 pt-safe-top px-safe"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs px-safe"
       >
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link
               href="/"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-emerald-700 hover:border-emerald-300 transition-all flex-shrink-0 tap-transparent"
-              aria-label="Back to concentrate calculator"
-              title="Back to concentrate calculator"
+              className="p-1.5 -ml-1 text-slate-500 hover:text-[#0e3b5e] hover:bg-slate-100 rounded-full transition-colors flex-shrink-0 tap-transparent"
+              title={language === 'en' ? 'Back to Concentrate Calculator' : 'ونڈہ کیلکولیٹر پر واپس جائیں'}
+              aria-label={language === 'en' ? 'Back to Concentrate Calculator' : 'ونڈہ کیلکولیٹر پر واپس جائیں'}
             >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ArrowLeft className="w-5 h-5" />
             </Link>
-            <Link href="/tmr" className="flex items-center gap-2.5 sm:gap-3 min-w-0 group">
+            <Link
+              href="/tmr"
+              className="flex items-center gap-2 sm:gap-3 group tap-transparent min-w-0"
+              title={language === 'en' ? 'RumiCalc TMR' : 'رومی کیلک TMR'}
+            >
               <img
                 src="/rumicalc-logo.png"
-                alt="RumiCalc TMR Logo"
+                alt="RumiCalc Logo"
                 className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
               />
               <div className="min-w-0">
                 <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
                   <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
-                  <span className="text-[10px] sm:text-xs font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] sm:text-xs font-bold text-[#558b2f] bg-[#558b2f]/10 border border-[#558b2f]/30 px-2 py-0.5 rounded-full">
                     TMR
                   </span>
                 </h1>
                 <p className="hidden sm:block text-[11px] font-semibold text-slate-500 truncate">
-                  {language === 'en' ? 'Total Mixed Ration (Forage + Concentrate)' : 'مکمل ملا ہوا راشن — چارہ + ونڈہ'}
+                  {language === 'en' ? 'Total Mixed Ration (Forage + Wanda)' : 'مکمل راشن (سبز چارہ + ونڈہ)'}
                 </p>
               </div>
             </Link>
@@ -275,7 +294,7 @@ export function TmrCalculator() {
       />
 
       {/* Main content */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 px-safe">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 px-safe pb-32 sm:pb-36">
         <Stepper
           currentStep={currentStep}
           totalSteps={5}
@@ -362,7 +381,16 @@ export function TmrCalculator() {
           </AnimatePresence>
         </div>
       </div>
-      <Footer language={language} />
+
+      {/* Unified Fixed Bottom Navigation & Footer */}
+      <Footer
+        currentStep={currentStep}
+        totalSteps={5}
+        language={language}
+        canProceed={canProceedCurrentStep}
+        onNext={handleNextStep}
+        onBack={handleBackStep}
+      />
     </div>
   );
 }

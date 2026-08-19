@@ -17,11 +17,14 @@ import { OnboardingModal, hasSeenOnboarding, markOnboardingSeen } from './Onboar
 import { GlossaryModal } from './GlossaryModal';
 import { Footer } from '@/components/Footer';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
+import { autoFormulate } from '@/lib/autoFormulate';
 import {
   CATEGORY_KEYS,
   categoryOfIngredient,
   emptyChosenIngredients,
   getIngredient,
+  getNutritionRange,
+  INGREDIENT_CATEGORIES,
   STAGES,
 } from '@/lib/constants';
 import { saveOverride, type IngredientOverride } from '@/lib/ingredientOverrides';
@@ -81,33 +84,18 @@ export function NutritionCalculator() {
 
   /**
    * "I already have my own mix" escape hatch for Step 2.
-   *
-   * Step 2 normally requires at least one energy source and one protein source
-   * before Next unlocks. That's right for someone building a ration from
-   * scratch, but it traps the other kind of user: a farmer who already feeds a
-   * fixed mix and only wants to know whether it hits the targets. When this is
-   * on, Next unlocks with any non-empty selection.
-   *
-   * Lives here rather than inside Step 2 because `AnimatePresence` unmounts each
-   * step on navigation — as local state it would reset the moment the user went
-   * to Step 3 and came back, re-locking the button they just unlocked.
    */
   const [skipValidation, setSkipValidation] = useState(false);
 
   // Step 3 State
   const [formula, setFormula] = useState<FormulaItem[]>([]);
 
-  // Transient flag: when the user enters Step 3 with a freshly-built formula
-  // (not a back-navigation, not a loaded save), we auto-run the Balanced LP
-  // so they see a sensible starting recipe instead of the even-10kg-each
-  // distribution. Step 3 consumes this flag once and tells us to clear it.
   const [autoBalanceOnMount, setAutoBalanceOnMount] = useState(false);
 
   // Saved-formulas modal
   const [savedOpen, setSavedOpen] = useState(false);
 
-  // First-time onboarding modal — auto-shows on first visit (localStorage flag).
-  // Re-openable any time via the Help icon in the header.
+  // First-time onboarding modal
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   useEffect(() => {
     if (!hasSeenOnboarding()) setOnboardingOpen(true);
@@ -117,7 +105,7 @@ export function NutritionCalculator() {
     setOnboardingOpen(false);
   }, []);
 
-  // Glossary modal — accessible from Help icon, explains nutrient abbreviations
+  // Glossary modal
   const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   // Nutrition conflict resolution
@@ -128,7 +116,6 @@ export function NutritionCalculator() {
 
   const handleAnimalSelect = useCallback((animal: string) => {
     setSelectedAnimal((prev) => {
-      // Reset stage to 0 when switching animals — stage indices differ per species
       if (prev !== animal) setSelectedStage(0);
       return animal;
     });
@@ -151,8 +138,6 @@ export function NutritionCalculator() {
 
   const handleFormulaChange = useCallback((newFormula: FormulaItem[]) => {
     setFormula((prev) => {
-      // Detect items that disappeared via Step3's X icon and also remove them
-      // from chosenIngredients, so going Back to Step 2 reflects the same state.
       const newKeys = new Set(newFormula.map((i) => i.key));
       const removedKeys = prev.filter((i) => !newKeys.has(i.key)).map((i) => i.key);
       if (removedKeys.length > 0) {
@@ -172,24 +157,9 @@ export function NutritionCalculator() {
   }, []);
 
   const handleNextStep = useCallback(() => {
-    // When moving from Step 2 (ingredient selection) to Step 3 (formula editor),
-    // sync the formula with the user's current ingredient selection:
-    //   • KEEP existing entries (and their custom kg / price) that are still selected
-    //   • ADD entries for any newly-selected ingredients
-    //   • DROP entries the user deselected on Step 2
-    // This preserves the user's customizations across Back/Forward navigation.
-    //
-    // On a TRULY-fresh Step 3 entry (no prior formula), set the auto-balance
-    // flag so Step 3 mounts and auto-runs the Balanced LP for a sensible
-    // starting recipe. Returning users with prior kg edits won't be overridden.
     if (currentStep === 1) {
       const wasEmpty = formula.length === 0;
       setFormula((prev) => mergeFormulaWithSelection(prev, chosenIngredients));
-      // Skip the auto-balance when the user opted out of the checks. Their
-      // selection is deliberately their own mix, so the Balanced LP would very
-      // likely be infeasible and greet them with a red error on arrival — right
-      // after we told them they'd only lose the automatic balancing. They get
-      // the even starting split to edit by hand instead.
       if (wasEmpty && !skipValidation) setAutoBalanceOnMount(true);
     }
 
@@ -205,10 +175,6 @@ export function NutritionCalculator() {
   const applyLoadedFormula = useCallback((entry: SavedFormula) => {
     setSelectedAnimal(entry.animalId);
     setSelectedStage(entry.stageIndex);
-    // `entry.chosenIngredients` has already been normalised + re-bucketed by
-    // savedFormulas.normalise(), so old saves that filed minerals under 'fat'
-    // arrive here with them under 'supplement'. Merge over an empty map so
-    // every bucket is guaranteed present.
     setChosenIngredients({
       ...emptyChosenIngredients(),
       ...entry.chosenIngredients,
@@ -216,42 +182,31 @@ export function NutritionCalculator() {
     setFormula(entry.formula);
     setCompletedSteps([0, 1]);
     setCurrentStep(2);
-    // Loading a saved recipe — don't run Balanced over it.
     setAutoBalanceOnMount(false);
   }, []);
 
-  /**
-   * Load handler called by SavedFormulasModal.
-   * Checks for nutrition conflicts before applying.
-   */
   const handleLoadSaved = useCallback((entry: SavedFormula) => {
     const formulaKeys = entry.formula.map((f) => f.key);
     const conflicts = detectConflicts(formulaKeys, entry.ingredientOverrides ?? {});
 
     if (conflicts.length === 0) {
-      // No conflicts — load directly
       applyLoadedFormula(entry);
       return;
     }
 
-    // Conflicts found — show the resolution modal
     setConflictData({ entry, conflicts });
   }, [applyLoadedFormula]);
 
-  /** User chose "Use Current Values" — load recipe, keep current ingredient database. */
   const handleConflictUseCurrent = useCallback(() => {
     if (!conflictData) return;
     applyLoadedFormula(conflictData.entry);
     setConflictData(null);
   }, [conflictData, applyLoadedFormula]);
 
-  /** User chose "Use Saved Values" — restore the overrides from save time, then load. */
   const handleConflictUseSaved = useCallback(() => {
     if (!conflictData) return;
     const savedOverrides = conflictData.entry.ingredientOverrides ?? {};
 
-    // For each ingredient in the formula, apply the saved override
-    // (or remove current override if ingredient had no override at save time)
     for (const item of conflictData.entry.formula) {
       const ovr = savedOverrides[item.key];
       if (ovr && Object.keys(ovr).length > 0) {
@@ -272,27 +227,17 @@ export function NutritionCalculator() {
     setChosenIngredients(emptyChosenIngredients());
     setFormula([]);
     setSkipValidation(false);
-    // Re-enable auto-balance for the next session
     setAutoBalanceOnMount(false);
   }, []);
 
-  /**
-   * Quick-start template: jump straight to Step 3 with a pre-built recipe.
-   * Mirrors `applyLoadedFormula` but starts from a curated template instead
-   * of a user-saved formula. We DO want auto-balance to fire on top of the
-   * template's selection, so the LP gives a properly-tuned recipe (the
-   * template only specifies WHICH ingredients, not quantities).
-   */
   const handleUseTemplate = useCallback((template: QuickStartTemplate) => {
     const picks = { ...emptyChosenIngredients(), ...template.chosenIngredients };
     setSelectedAnimal(template.animalId);
     setSelectedStage(template.stageIndex);
     setChosenIngredients(picks);
-    // Build initial even-distribution formula; Balanced LP will overwrite it
     setFormula(buildFormula(picks));
     setCompletedSteps([0, 1]);
     setCurrentStep(2);
-    // Run Balanced LP on Step 3 mount to populate proper kg values
     setAutoBalanceOnMount(true);
   }, []);
 
@@ -315,17 +260,48 @@ export function NutritionCalculator() {
       ? STAGES[selectedAnimal as keyof typeof STAGES][language][selectedStage] ?? ''
       : '';
 
+  const canProceedCurrentStep = (() => {
+    if (currentStep === 0) return selectedAnimal !== null;
+    if (currentStep === 1) {
+      const totalSelected = Object.values(chosenIngredients).reduce((sum, arr) => sum + arr.length, 0);
+      if (skipValidation) return totalSelected > 0;
+
+      // Ensure required categories (min >= 1) have at least min items selected
+      for (const [catKey, cat] of Object.entries(INGREDIENT_CATEGORIES)) {
+        const picked = chosenIngredients[catKey] || [];
+        if (cat.min > 0 && picked.length < cat.min) return false;
+      }
+
+      if (!selectedAnimal) return false;
+      const ranges = getNutritionRange(selectedAnimal, selectedStage);
+      if (!ranges) return false;
+
+      const allKeys = Object.values(chosenIngredients).flat();
+      if (allKeys.length === 0) return false;
+
+      const result = autoFormulate({ ingredientKeys: allKeys, ranges });
+      return result.success;
+    }
+    if (currentStep === 2) return formula.length > 0;
+    if (currentStep === 3) return true;
+    return true;
+  })();
+
   return (
-    <div className="min-h-screen relative pb-safe-bottom">
-      {/* Header — slim on mobile, full on desktop */}
+    <div className="min-h-screen">
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 pt-safe-top px-safe"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs px-safe"
       >
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Link href="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0 group">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center gap-2 sm:gap-4">
+          <div className="min-w-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2 sm:gap-3 group tap-transparent"
+              title={language === 'en' ? 'RumiCalc Home' : 'رومی کیلک ہوم'}
+            >
               <img
                 src="/rumicalc-logo.png"
                 alt="RumiCalc Logo"
@@ -357,7 +333,7 @@ export function NutritionCalculator() {
               <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
 
-            {/* Switch to TMR (full-ration) calculator. Icon-only on mobile, with label on sm+. */}
+            {/* Switch to TMR calculator */}
             <Link
               href="/tmr"
               className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3.5 rounded-full bg-white border border-slate-200 shadow-xs text-xs sm:text-sm font-bold text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 hover:shadow-sm transition-all tap-transparent"
@@ -371,7 +347,7 @@ export function NutritionCalculator() {
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
               whileTap={{ scale: 0.95 }}
-              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 hover:shadow-sm transition-all tap-transparent"
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 shadow-xs flex items-center justify-center text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 transition-all tap-transparent"
               title={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
               aria-label={language === 'en' ? 'Saved Formulas' : 'محفوظ فارمولے'}
             >
@@ -390,7 +366,7 @@ export function NutritionCalculator() {
         onLoad={handleLoadSaved}
       />
 
-      {/* First-time onboarding (auto-shown once, re-openable from Help icon) */}
+      {/* First-time onboarding */}
       <OnboardingModal
         isOpen={onboardingOpen}
         language={language}
@@ -415,7 +391,7 @@ export function NutritionCalculator() {
       />
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 px-safe">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 px-safe pb-32 sm:pb-36">
         {/* Stepper */}
         <Stepper
           currentStep={currentStep}
@@ -426,12 +402,6 @@ export function NutritionCalculator() {
         />
 
         {/* Steps Content */}
-        {/*
-          AnimatePresence MUST receive exactly one direct child whose `key`
-          changes when content changes — otherwise rapid back-and-forth between
-          steps (after a state mutation like removing an ingredient) can leave
-          the panel blank because exit/enter handshakes get out of sync.
-        */}
         <div className="bg-white rounded-xl sm:rounded-lg shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
           <AnimatePresence mode="wait">
             <motion.div
@@ -505,8 +475,15 @@ export function NutritionCalculator() {
         </div>
       </div>
 
-      {/* Footer */}
-      <Footer language={language} />
+      {/* Unified Fixed Bottom Navigation & Footer */}
+      <Footer
+        currentStep={currentStep}
+        totalSteps={5}
+        language={language}
+        canProceed={canProceedCurrentStep}
+        onNext={handleNextStep}
+        onBack={handleBackStep}
+      />
     </div>
   );
 }

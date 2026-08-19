@@ -223,22 +223,6 @@ export function Step1Animal({
 
       {/* Target-Range Preview */}
       {activeRange && <TargetCard language={language} range={activeRange} />}
-
-      {/* Action Buttons — taller tap targets on mobile */}
-      <div className="flex gap-3 pt-6 sm:pt-8">
-        {onBack && (
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 sm:h-11 rounded-xl border-slate-300 font-semibold tap-transparent">
-            {t.back}
-          </Button>
-        )}
-        <Button
-          onClick={onNext}
-          disabled={!isComplete}
-          className="flex-1 h-12 sm:h-11 rounded-xl bg-gradient-to-r from-[#0e3b5e] to-[#155e75] hover:from-[#09253b] hover:to-[#0e3b5e] text-white font-bold shadow-md shadow-[#0e3b5e]/20 tap-transparent"
-        >
-          {t.next}
-        </Button>
-      </div>
     </motion.div>
   );
 }
