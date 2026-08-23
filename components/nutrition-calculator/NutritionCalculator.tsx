@@ -305,16 +305,16 @@ export function NutritionCalculator() {
               <img
                 src="/rumicalc-logo.png"
                 alt="RumiCalc Logo"
-                className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
+                className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
               />
-              <div className="min-w-0">
+              <div className="hidden sm:block min-w-0">
                 <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
                   <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
-                  <span className="text-[10px] sm:text-xs font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/20 px-2 py-0.5 rounded-full hidden sm:inline">
+                  <span className="text-[10px] sm:text-xs font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/20 px-2 py-0.5 rounded-full">
                     {language === 'en' ? 'Concentrate' : 'ونڈہ'}
                   </span>
                 </h1>
-                <p className="hidden sm:block text-[11px] font-semibold text-slate-500 truncate">
+                <p className="text-[11px] font-semibold text-slate-500 truncate">
                   {language === 'en' ? 'Livestock Feed & Wanda Calculator' : 'مویشیوں کے ونڈہ کا سمارٹ فارمولا'}
                 </p>
               </div>

@@ -67,9 +67,9 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     badgeEn: 'Most popular', badgeUr: 'سب سے مقبول',
     chosenIngredients: {
       energy:     ['corn', 'wheat_bran', 'molasses'],
-      protein:    ['sbm', 'csm'],
-      fiber:      [],
-      fat:        [],
+      protein:    ['rsm'],
+      fiber:      ['chickpea_husk'],
+      fat:        ['rice_bran_oil'],
       supplement: ['limestone', 'salt'],
     },
   },
@@ -86,9 +86,6 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
       energy:     ['corn', 'wheat_bran', 'molasses'],
       protein:    ['sbm', 'canola_meal', 'csm'],
       fiber:      [],
-      // Bypass fat is standard practice for a 20 L cow in early lactation —
-      // she's in negative energy balance and needs the density. The LP will
-      // only actually use it if it helps hit the targets.
       fat:        ['bypassFat'],
       supplement: ['limestone', 'salt', 'sodium_bicarb'],
     },
@@ -103,11 +100,11 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_cow',
     stageIndex: 3,
     chosenIngredients: {
-      energy:     ['corn', 'wheat_bran'],
-      protein:    ['csm'],
-      fiber:      [],
+      energy:     ['corn', 'molasses'],
+      protein:    ['canola_meal'],
+      fiber:      ['wheat_bran', 'chickpea_husk', 'soybean_hulls'],
       fat:        [],
-      supplement: ['limestone', 'salt'],
+      supplement: ['limestone', 'sodium_bicarb'],
     },
   },
 
@@ -122,10 +119,10 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'dairy_buffalo',
     stageIndex: 1,
     chosenIngredients: {
-      energy:     ['corn', 'wheat_bran', 'molasses', 'rice_polish'],
+      energy:     ['corn', 'wheat_bran', 'molasses'],
       protein:    ['sbm', 'csm'],
-      fiber:      [],
-      fat:        [],
+      fiber:      ['chickpea_husk'],
+      fat:        ['rice_bran_oil'],
       supplement: ['limestone', 'salt'],
     },
   },
@@ -141,9 +138,9 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     animalId: 'heifer',
     stageIndex: 1,
     chosenIngredients: {
-      energy:     ['corn', 'wheat_bran'],
+      energy:     ['corn', 'wheat_bran', 'molasses'],
       protein:    ['sbm', 'csm'],
-      fiber:      [],
+      fiber:      ['chickpea_husk'],
       fat:        [],
       supplement: ['limestone', 'dcp', 'salt'],
     },
