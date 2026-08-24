@@ -3,7 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { INGREDIENT_CATEGORIES, getIngredient } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Info, X } from 'lucide-react';
 
 interface Step2IngredientsProps {
@@ -26,7 +27,13 @@ interface IngredientInfoModalProps {
 }
 
 function IngredientInfoModal({ ingredient, data, language, onClose }: IngredientInfoModalProps) {
-  if (!ingredient || !data) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === 'undefined' || !ingredient || !data) return null;
 
   const nutrients = [
     { label: 'CP', value: data.cp, unit: '%' },
@@ -38,21 +45,22 @@ function IngredientInfoModal({ ingredient, data, language, onClose }: Ingredient
     { label: 'P', value: data.p, unit: '%' },
   ].filter(n => n.value !== null);
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-      >
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
         <motion.div
-          initial={{ scale: 0.9, y: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999]"
+        />
+        <motion.div
+          initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 20 }}
+          exit={{ scale: 0.95, y: 20 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+          className="relative z-[10000] bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[75vh] flex flex-col overflow-hidden my-auto border border-slate-200"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4 flex items-center justify-between text-white">
@@ -114,8 +122,9 @@ function IngredientInfoModal({ ingredient, data, language, onClose }: Ingredient
             </Button>
           </div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    </AnimatePresence>,
+    document.body
   );
 }
 

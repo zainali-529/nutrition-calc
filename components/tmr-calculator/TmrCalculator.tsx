@@ -242,8 +242,8 @@ export function TmrCalculator() {
               <div className="hidden sm:block min-w-0">
                 <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
                   <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
-                  <span className="text-[10px] sm:text-xs font-bold text-[#558b2f] bg-[#558b2f]/10 border border-[#558b2f]/30 px-2 py-0.5 rounded-full">
-                    TMR
+                  <span className="text-[10px] sm:text-xs font-bold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    TMR • {language === 'en' ? 'Coming Soon' : 'عنقریب'}
                   </span>
                 </h1>
                 <p className="text-[11px] font-semibold text-slate-500 truncate">

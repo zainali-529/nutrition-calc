@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bookmark, HelpCircle, Layers } from 'lucide-react';
 import Link from 'next/link';
@@ -241,7 +241,43 @@ export function NutritionCalculator() {
     setAutoBalanceOnMount(true);
   }, []);
 
+  // Secret unlock state for special persons (10 clicks in 1 minute on Step 5 Download)
+  const [showSpecialBreakdown, setShowSpecialBreakdown] = useState(false);
+  const [specialUnlockedToast, setSpecialUnlockedToast] = useState(false);
+  const downloadClickTimestamps = useRef<number[]>([]);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && sessionStorage.getItem('rumicalc_special_unlocked') === 'true') {
+        setShowSpecialBreakdown(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const triggerSpecialDownloadTap = useCallback(() => {
+    const now = Date.now();
+    // Keep clicks within the last 60 seconds (1 minute)
+    downloadClickTimestamps.current = downloadClickTimestamps.current.filter((t: number) => now - t <= 60000);
+    downloadClickTimestamps.current.push(now);
+
+    if (downloadClickTimestamps.current.length >= 10 && !showSpecialBreakdown) {
+      setShowSpecialBreakdown(true);
+      try {
+        sessionStorage.setItem('rumicalc_special_unlocked', 'true');
+      } catch {
+        // ignore
+      }
+      setSpecialUnlockedToast(true);
+      setTimeout(() => setSpecialUnlockedToast(false), 5000);
+    }
+  }, [showSpecialBreakdown]);
+
   const handleStepClick = (step: number) => {
+    if (step === 4) {
+      triggerSpecialDownloadTap();
+    }
     if (step <= Math.max(...completedSteps, currentStep)) {
       setCurrentStep(step);
     }
@@ -333,16 +369,24 @@ export function NutritionCalculator() {
               <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
 
-            {/* Switch to TMR calculator */}
-            <Link
-              href="/tmr"
-              className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3.5 rounded-full bg-white border border-slate-200 shadow-xs text-xs sm:text-sm font-bold text-[#0e3b5e] hover:text-[#558b2f] hover:border-[#558b2f]/50 hover:shadow-sm transition-all tap-transparent"
-              title={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر پر جائیں'}
-              aria-label={language === 'en' ? 'Switch to TMR Calculator' : 'TMR کیلکولیٹر'}
+            {/* Switch to TMR calculator - Disabled for production until finalized */}
+            <div
+              className="relative inline-flex flex-shrink-0"
+              title={language === 'en' ? 'TMR Calculator (Coming Soon)' : 'TMR کیلکولیٹر (عنقریب)'}
             >
-              <Layers className="w-4 h-4 sm:w-4 sm:h-4 text-[#558b2f]" />
-              <span className="hidden sm:inline">TMR</span>
-            </Link>
+              <button
+                disabled
+                type="button"
+                className="inline-flex items-center justify-center sm:justify-start gap-0 sm:gap-1.5 w-9 h-9 sm:w-auto sm:h-10 sm:px-3 rounded-full bg-slate-100 border border-slate-200 text-slate-400 text-xs sm:text-sm font-bold cursor-not-allowed select-none opacity-80"
+                aria-label={language === 'en' ? 'TMR Calculator (Coming Soon)' : 'TMR کیلکولیٹر (عنقریب)'}
+              >
+                <Layers className="w-4 h-4 sm:w-4 sm:h-4 text-slate-400" />
+                <span className="hidden sm:inline">TMR</span>
+              </button>
+              <span className="absolute -top-2.5 -right-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider whitespace-nowrap border border-white animate-pulse">
+                {language === 'en' ? 'Coming Soon' : 'عنقریب'}
+              </span>
+            </div>
             <motion.button
               onClick={() => setSavedOpen(true)}
               whileHover={{ scale: 1.08, y: -1 }}
@@ -468,12 +512,36 @@ export function NutritionCalculator() {
                   stageIndex={selectedStage}
                   chosenIngredients={chosenIngredients}
                   onReset={handleReset}
+                  showBreakdownBtn={showSpecialBreakdown}
+                  onTriggerSpecialTap={triggerSpecialDownloadTap}
                 />
               )}
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Special Access Granted Toast */}
+      {specialUnlockedToast && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-16 sm:bottom-20 left-4 sm:left-6 right-4 sm:right-6 bg-indigo-900 text-white border border-indigo-400/50 rounded-xl p-4 shadow-xl z-50 mb-safe-bottom flex items-center gap-3"
+        >
+          <span className="text-2xl">🔓</span>
+          <div>
+            <div className="font-extrabold text-sm text-indigo-200">
+              {language === 'en' ? 'Special Access Granted!' : 'خاص رسائی فعال ہو گئی!'}
+            </div>
+            <div className="text-xs text-indigo-100/90">
+              {language === 'en'
+                ? 'Background calculation breakdown is now unlocked.'
+                : 'پیچھے کا حساب دیکھنے کی سہولت اب ظاہر کر دی گئی ہے۔'}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Unified Fixed Bottom Navigation & Footer */}
       <Footer

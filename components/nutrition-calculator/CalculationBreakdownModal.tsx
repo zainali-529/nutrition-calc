@@ -62,10 +62,19 @@ function rangeFor(
   return (ranges as unknown as Record<string, { min: number; max: number }>)[resultKey] ?? null;
 }
 
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
 export function CalculationBreakdownModal({
   isOpen, language, formula, animal, stage, animalId, stageIndex, onClose,
 }: Props) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
 
   const trace = buildCalculationTrace(formula);
   const result = calculateNutrients(formula);
@@ -265,7 +274,7 @@ export function CalculationBreakdownModal({
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <>
         {/* ── Print / PDF sheet ──────────────────────────────────────────────
@@ -363,19 +372,19 @@ export function CalculationBreakdownModal({
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] print:hidden"
-        />
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 40, scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[94vw] max-w-5xl z-[71] max-h-[94vh] flex flex-col"
-        >
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] pb-safe-bottom sm:pb-0">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden print:hidden pointer-events-auto">
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] print:hidden"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[100000] w-full max-w-4xl max-h-[75vh] sm:max-h-[78vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden my-auto border border-slate-200"
+          >
             {/* Header */}
             <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-200 flex-shrink-0 bg-slate-50/50">
               <div className="flex items-start gap-2.5 min-w-0">
@@ -583,9 +592,10 @@ export function CalculationBreakdownModal({
                 {t.close}
               </button>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -6,7 +6,7 @@ import {
   Save, Loader2,
 } from 'lucide-react';
 import { FormulaItem, calculateNutrients, exportFormulaAsText } from '@/lib/calculations';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { saveFormula } from '@/lib/savedFormulas';
 import { getOverride } from '@/lib/ingredientOverrides';
 import { getNutritionRange } from '@/lib/constants';
@@ -23,6 +23,8 @@ interface Step5ActionsProps {
   stageIndex: number;                                // for restoration on load
   chosenIngredients: Record<string, string[]>;      // for restoration on load
   onReset: () => void;
+  showBreakdownBtn?: boolean;
+  onTriggerSpecialTap?: () => void;
 }
 
 /**
@@ -104,6 +106,8 @@ export function Step5Actions({
   stageIndex,
   chosenIngredients,
   onReset,
+  showBreakdownBtn: propShowBreakdownBtn = false,
+  onTriggerSpecialTap,
 }: Step5ActionsProps) {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -114,6 +118,42 @@ export function Step5Actions({
    */
   const [saved, setSaved] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+
+  // Secret unlock state for special persons (10 clicks in 1 minute on download)
+  const [localShowBreakdownBtn, setLocalShowBreakdownBtn] = useState(false);
+  const [specialUnlockedToast, setSpecialUnlockedToast] = useState(false);
+  const downloadClickTimestamps = useRef<number[]>([]);
+
+  const isUnlocked = propShowBreakdownBtn || localShowBreakdownBtn;
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && sessionStorage.getItem('rumicalc_special_unlocked') === 'true') {
+        setLocalShowBreakdownBtn(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const registerDownloadTap = () => {
+    onTriggerSpecialTap?.();
+    const now = Date.now();
+    // Keep clicks within the last 60 seconds (1 minute)
+    downloadClickTimestamps.current = downloadClickTimestamps.current.filter((t) => now - t <= 60000);
+    downloadClickTimestamps.current.push(now);
+
+    if (downloadClickTimestamps.current.length >= 10 && !isUnlocked) {
+      setLocalShowBreakdownBtn(true);
+      try {
+        sessionStorage.setItem('rumicalc_special_unlocked', 'true');
+      } catch {
+        // ignore
+      }
+      setSpecialUnlockedToast(true);
+      setTimeout(() => setSpecialUnlockedToast(false), 5000);
+    }
+  };
 
   const nutrients = calculateNutrients(formula);
   const ranges = getNutritionRange(animalId, stageIndex);
@@ -192,6 +232,7 @@ export function Step5Actions({
   };
 
   const handleShare = () => {
+    registerDownloadTap();
     setLoadingAction('share');
     try {
       const text = exportFormulaAsText(formula, language);
@@ -205,6 +246,7 @@ export function Step5Actions({
   };
 
   const handleDownloadPDF = () => {
+    registerDownloadTap();
     setLoadingAction('pdf');
     try {
       const text = exportFormulaAsText(formula, language);
@@ -231,6 +273,7 @@ export function Step5Actions({
    * bottom of this component).
    */
   const handlePrint = () => {
+    registerDownloadTap();
     setLoadingAction('print');
     try {
       window.print();
@@ -307,23 +350,31 @@ export function Step5Actions({
         </div>
       </div>
 
-      {/* Sits directly under the summary on purpose: the natural next question
-          after seeing those numbers is "where did they come from?". */}
-      <motion.button
-        whileHover={{ y: -1 }}
-        whileTap={{ scale: 0.99 }}
-        onClick={() => setBreakdownOpen(true)}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 flex items-center gap-3 text-left hover:border-slate-400 hover:bg-slate-50 transition-colors tap-transparent"
-      >
-        <span className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0">
-          <FlaskConical className="w-4 h-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-slate-900 leading-tight">{t.breakdown}</span>
-          <span className="block text-[11px] text-slate-500">{t.breakdownDesc}</span>
-        </span>
-        <span className="text-slate-400 text-lg leading-none flex-shrink-0">›</span>
-      </motion.button>
+      {/* Hidden by default — revealed only when secret 10-tap trigger in 1 minute on download is activated */}
+      {isUnlocked && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.99 }}
+          onClick={() => setBreakdownOpen(true)}
+          className="w-full rounded-xl border-2 border-indigo-500/30 bg-gradient-to-r from-slate-900 to-indigo-950 text-white px-4 py-3 flex items-center gap-3 text-left hover:border-indigo-400 transition-colors tap-transparent shadow-md"
+        >
+          <span className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 font-bold shadow-xs">
+            <FlaskConical className="w-4 h-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold leading-tight flex items-center gap-2">
+              {t.breakdown}
+              <span className="bg-indigo-500/40 text-indigo-200 text-[10px] px-2 py-0.5 rounded-full font-mono border border-indigo-400/30">
+                {language === 'en' ? 'Special Access' : 'خاص رسائی'}
+              </span>
+            </span>
+            <span className="block text-[11px] text-slate-300">{t.breakdownDesc}</span>
+          </span>
+          <span className="text-slate-400 text-lg leading-none flex-shrink-0">›</span>
+        </motion.button>
+      )}
 
       {/* Primary action */}
       <PrimaryAction
@@ -402,6 +453,28 @@ export function Step5Actions({
           className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 bg-green-500 text-white rounded-lg p-4 shadow-lg z-50 mb-safe-bottom"
         >
           ✓ {t.saved}
+        </motion.div>
+      )}
+
+      {/* Special Access Granted Toast */}
+      {specialUnlockedToast && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-16 sm:bottom-20 left-4 sm:left-6 right-4 sm:right-6 bg-indigo-900 text-white border border-indigo-400/50 rounded-xl p-4 shadow-xl z-50 mb-safe-bottom flex items-center gap-3"
+        >
+          <span className="text-2xl">🔓</span>
+          <div>
+            <div className="font-extrabold text-sm text-indigo-200">
+              {language === 'en' ? 'Special Access Granted!' : 'خاص رسائی فعال ہو گئی!'}
+            </div>
+            <div className="text-xs text-indigo-100/90">
+              {language === 'en'
+                ? 'Background calculation breakdown is now unlocked.'
+                : 'پیچھے کا حساب دیکھنے کی سہولت اب ظاہر کر دی گئی ہے۔'}
+            </div>
+          </div>
         </motion.div>
       )}
     </motion.div>

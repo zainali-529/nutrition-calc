@@ -67,7 +67,7 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     badgeEn: 'Most popular', badgeUr: 'سب سے مقبول',
     chosenIngredients: {
       energy:     ['corn', 'wheat_bran', 'molasses'],
-      protein:    ['rsm'],
+      protein:    ['sbm', 'csm'],
       fiber:      ['chickpea_husk'],
       fat:        ['rice_bran_oil'],
       supplement: ['limestone', 'salt'],
@@ -120,7 +120,7 @@ export const QUICK_START_TEMPLATES: QuickStartTemplate[] = [
     stageIndex: 1,
     chosenIngredients: {
       energy:     ['corn', 'wheat_bran', 'molasses'],
-      protein:    ['sbm', 'csm'],
+      protein:    ['sbm', 'csm', 'canola_meal'],
       fiber:      ['chickpea_husk'],
       fat:        ['rice_bran_oil'],
       supplement: ['limestone', 'salt'],

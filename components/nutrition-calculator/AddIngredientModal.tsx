@@ -2,7 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,6 +96,11 @@ export function AddIngredientModal({
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [submitted, setSubmitted] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Existing keys to detect collisions when generating a unique slug
   const takenKeys = useMemo(() => new Set(getAllIngredients().map((i) => i.key)), [isOpen]);
 
@@ -176,28 +182,29 @@ export function AddIngredientModal({
     );
   };
 
-  return (
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden pointer-events-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999]"
           />
 
-          {/* Modal — bottom sheet on mobile, centered card on desktop */}
+          {/* Modal — compact centered card with flex scroll container */}
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{    opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[85vw] lg:w-[75vw] max-w-3xl z-[71] max-h-[92vh] flex flex-col"
+            exit={{    opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[100000] w-full max-w-2xl max-h-[75vh] sm:max-h-[78vh] flex flex-col bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
           >
-            <div className="bg-gradient-to-br from-white to-slate-50 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-white/40 overflow-hidden flex flex-col max-h-[92vh] pb-safe-bottom sm:pb-0">
               {/* Header */}
               <div className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 text-white flex-shrink-0">
                 <div className="flex items-start justify-between gap-3">
@@ -321,11 +328,11 @@ export function AddIngredientModal({
                   </Button>
                 </div>
               </div>
-            </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

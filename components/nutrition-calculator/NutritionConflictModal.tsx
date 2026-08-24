@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { getIngredient, getIngredientIcon, getDefaultIngredient } from '@/lib/constants';
 
 /** One ingredient whose nutrition values differ between saved and current state. */
@@ -84,6 +86,12 @@ export function NutritionConflictModal({
   onUseSaved,
   onCancel,
 }: NutritionConflictModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const t = {
     title:       language === 'en' ? 'Nutrition Values Changed' : 'غذائی اقدار تبدیل ہو گئیں',
     subtitle:    language === 'en'
@@ -102,26 +110,27 @@ export function NutritionConflictModal({
     cancel:      language === 'en' ? 'Cancel' : 'منسوخ',
   };
 
-  return (
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onCancel}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999]"
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{    opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[92vw] max-w-lg z-[61] max-h-[92vh] sm:max-h-[85vh] flex flex-col pb-safe-bottom sm:pb-0"
+            exit={{    opacity: 0, y: 30, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[10000] w-full max-w-md max-h-[75vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden my-auto border border-slate-200"
           >
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
               {/* Header */}
               <div className="bg-amber-50 border-b border-amber-200 px-5 py-4 flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -186,10 +195,10 @@ export function NutritionConflictModal({
                   {t.cancel}
                 </button>
               </div>
-            </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
