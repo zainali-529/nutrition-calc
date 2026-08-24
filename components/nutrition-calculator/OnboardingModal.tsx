@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Beef, ListChecks, FileDown, Languages } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 
 interface OnboardingModalProps {
@@ -38,15 +40,21 @@ export function markOnboardingSeen(): void {
  * land on Step 1 with no context.
  */
 export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const t = {
-    title:    language === 'en' ? 'Welcome to RumiCalc' : 'رومی کیلک (RumiCalc) میں خوش آمدید',
-    subtitle: language === 'en'
-      ? 'Build a healthy, low-cost feed mix for your cow, buffalo, or goat — in 5 quick steps.'
-      : 'اپنی گائے، بھینس یا بکری کے لیے صحت مند اور سستا فارمولا بنائیں — صرف 5 آسان مراحل میں۔',
-    howItWorks: language === 'en' ? 'How it works' : 'یہ کیسے کام کرتا ہے',
-    feature1Title: language === 'en' ? 'Pick your animal' : 'جانور منتخب کریں',
+    title:         language === 'en' ? 'Welcome to RumiCalc' : 'روُمی کیلک میں خوش آمدید',
+    subtitle:      language === 'en'
+      ? 'Precision livestock feed formulation in 5 quick steps.'
+      : 'صرف ۵ مراحل میں مویشیوں کا سائنسی اور متوازن ونڈا تیار کریں۔',
+    howItWorks:    language === 'en' ? 'How it works' : 'یہ کیسے کام کرتا ہے',
+    feature1Title: language === 'en' ? 'Pick your animal' : 'جانور کا انتخاب کریں',
     feature1Desc:  language === 'en'
-      ? 'Cow, buffalo, heifer, fattening bull, or goat — and pick the production stage.'
+      ? 'Cow, buffalo, heifer, bull, or goat — and select their stage of production.'
       : 'گائے، بھینس، بچھڑی، بیل یا بکری — اور پیداواری مرحلہ چنیں۔',
     feature2Title: language === 'en' ? 'Choose your ingredients' : 'اپنے اجزاء چنیں',
     feature2Desc:  language === 'en'
@@ -72,24 +80,26 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
     { icon: FileDown,    title: t.feature4Title, desc: t.feature4Desc },
   ];
 
-  return (
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden pointer-events-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999]"
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{    opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[90vw] max-w-2xl z-[81] max-h-[92vh] flex flex-col pb-safe-bottom sm:pb-0"
+            exit={{    opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[100000] w-full max-w-xl max-h-[75vh] sm:max-h-[78vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden my-auto border border-slate-200"
           >
             <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
               {/* Header */}
@@ -165,8 +175,9 @@ export function OnboardingModal({ isOpen, language, onClose }: OnboardingModalPr
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

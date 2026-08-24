@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Bookmark, Trash2, FolderOpen, Beef, Zap, Coins } from 'lucide-react';
 import {
   listSavedTmrFormulas,
@@ -22,6 +23,11 @@ export function TmrSavedFormulasModal({
 }: TmrSavedFormulasModalProps) {
   const [items, setItems] = useState<SavedTmrFormula[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,26 +73,27 @@ export function TmrSavedFormulasModal({
     return ANIMALS.find((a) => a.id === animalId)?.icon ?? '🐄';
   };
 
-  return (
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden pointer-events-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999]"
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[80vw] lg:w-[70vw] max-w-3xl z-[71] max-h-[92vh] sm:max-h-[85vh] flex flex-col pb-safe-bottom sm:pb-0"
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{    opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[100000] w-full max-w-2xl max-h-[75vh] sm:max-h-[78vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden my-auto border border-slate-200"
           >
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full">
               <div className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 text-white flex items-start justify-between flex-shrink-0">
                 <div className="flex items-start gap-3">
                   <div className="bg-white/15 backdrop-blur-sm p-2.5 rounded-xl">
@@ -170,11 +177,11 @@ export function TmrSavedFormulasModal({
                   </ul>
                 )}
               </div>
-            </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -147,7 +147,16 @@ const ENTRIES: GlossaryEntry[] = [
  * "What do these mean?" reference shown via the Help icon. Bilingual cards
  * for every nutrient the calculator uses, written for farmers (not nutritionists).
  */
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
 export function GlossaryModal({ isOpen, language, onClose }: GlossaryModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const t = {
     title:    language === 'en' ? 'What do these mean?' : 'ان کا کیا مطلب ہے؟',
     subtitle: language === 'en'
@@ -159,26 +168,27 @@ export function GlossaryModal({ isOpen, language, onClose }: GlossaryModalProps)
     close:    language === 'en' ? 'Close' : 'بند کریں',
   };
 
-  return (
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden pointer-events-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999]"
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{    opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:w-[90vw] max-w-3xl z-[81] max-h-[92vh] flex flex-col pb-safe-bottom sm:pb-0"
+            exit={{    opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="relative z-[100000] w-full max-w-2xl max-h-[75vh] sm:max-h-[78vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden my-auto border border-slate-200"
           >
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
               {/* Header */}
               <div className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 text-white flex items-start justify-between flex-shrink-0">
                 <div className="flex items-start gap-3">
@@ -234,10 +244,10 @@ export function GlossaryModal({ isOpen, language, onClose }: GlossaryModalProps)
                   ))}
                 </ul>
               </div>
-            </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

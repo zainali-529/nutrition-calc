@@ -237,16 +237,16 @@ export function TmrCalculator() {
               <img
                 src="/rumicalc-logo.png"
                 alt="RumiCalc Logo"
-                className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
+                className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform"
               />
-              <div className="min-w-0">
+              <div className="hidden sm:block min-w-0">
                 <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
                   <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
-                  <span className="text-[10px] sm:text-xs font-bold text-[#558b2f] bg-[#558b2f]/10 border border-[#558b2f]/30 px-2 py-0.5 rounded-full">
-                    TMR
+                  <span className="text-[10px] sm:text-xs font-bold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    TMR • {language === 'en' ? 'Coming Soon' : 'عنقریب'}
                   </span>
                 </h1>
-                <p className="hidden sm:block text-[11px] font-semibold text-slate-500 truncate">
+                <p className="text-[11px] font-semibold text-slate-500 truncate">
                   {language === 'en' ? 'Total Mixed Ration (Forage + Wanda)' : 'مکمل راشن (سبز چارہ + ونڈہ)'}
                 </p>
               </div>
