@@ -16,6 +16,9 @@ import { NutritionConflictModal, detectConflicts, type NutritionConflict } from 
 import { OnboardingModal, hasSeenOnboarding, markOnboardingSeen } from './OnboardingModal';
 import { GlossaryModal } from './GlossaryModal';
 import { Footer } from '@/components/Footer';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
 import { autoFormulate } from '@/lib/autoFormulate';
 import {
@@ -230,6 +233,14 @@ export function NutritionCalculator() {
     setAutoBalanceOnMount(false);
   }, []);
 
+  const handleLogoClick = useCallback((e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    handleReset();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  }, [handleReset]);
+
   const handleUseTemplate = useCallback((template: QuickStartTemplate) => {
     const picks = { ...emptyChosenIngredients(), ...template.chosenIngredients };
     setSelectedAnimal(template.animalId);
@@ -255,6 +266,47 @@ export function NutritionCalculator() {
       // ignore
     }
   }, []);
+
+  // Native Capacitor mobile integration: Android back button & status bar
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#0e3b5e' }).catch(() => {});
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+
+      const backListener = App.addListener('backButton', () => {
+        if (savedOpen) {
+          setSavedOpen(false);
+        } else if (onboardingOpen) {
+          closeOnboarding();
+        } else if (glossaryOpen) {
+          setGlossaryOpen(false);
+        } else if (conflictData) {
+          setConflictData(null);
+        } else if (currentStep > 0) {
+          setCurrentStep((prev) => prev - 1);
+        } else {
+          App.minimizeApp();
+        }
+      });
+
+      return () => {
+        backListener.then((h) => h.remove()).catch(() => {});
+      };
+    }
+  }, [savedOpen, onboardingOpen, glossaryOpen, conflictData, currentStep, closeOnboarding]);
+
+  // Scroll page to top on every step transition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      } catch {
+        // ignore
+      }
+    }
+  }, [currentStep]);
 
   const triggerSpecialDownloadTap = useCallback(() => {
     const now = Date.now();
@@ -329,14 +381,15 @@ export function NutritionCalculator() {
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs px-safe"
+        className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs px-safe pt-safe"
       >
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center gap-2 sm:gap-4">
           <div className="min-w-0">
-            <Link
+            <a
               href="/"
-              className="flex items-center gap-2 sm:gap-3 group tap-transparent"
-              title={language === 'en' ? 'RumiCalc Home' : 'رومی کیلک ہوم'}
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 sm:gap-3 group tap-transparent cursor-pointer"
+              title={language === 'en' ? 'RumiCalc Home — Reset to Step 1' : 'رومی کیلک ہوم — دوبارہ شروع کریں'}
             >
               <img
                 src="/rumicalc-logo.png"
@@ -354,7 +407,7 @@ export function NutritionCalculator() {
                   {language === 'en' ? 'Livestock Feed & Wanda Calculator' : 'مویشیوں کے ونڈہ کا سمارٹ فارمولا'}
                 </p>
               </div>
-            </Link>
+            </a>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Help — opens the bilingual nutrient glossary */}
@@ -551,6 +604,7 @@ export function NutritionCalculator() {
         canProceed={canProceedCurrentStep}
         onNext={handleNextStep}
         onBack={handleBackStep}
+        onLogoClick={handleLogoClick}
       />
     </div>
   );
