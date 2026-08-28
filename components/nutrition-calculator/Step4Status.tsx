@@ -75,7 +75,7 @@ export function Step4Status({
    * the screen say everything twice and, on a phone, doubled the scrolling for
    * zero information. The passing nutrients collapse into one summary line.
    */
-  const fixes = generateRecommendations(nutrients, ranges)
+  const fixes = generateRecommendations(nutrients, ranges, language)
     .filter((r): r is typeof r & { status: 'warning' | 'error' } => r.status !== 'success')
     // errors before warnings — worst first
     .sort((a, b) => (a.status === b.status ? 0 : a.status === 'error' ? -1 : 1));
@@ -84,7 +84,7 @@ export function Step4Status({
   const allGood = ranges != null && fixes.length === 0;
 
   const t = {
-    nutritionStatus: language === 'en' ? 'Nutrition Status' : 'غذائی حالت',
+    nutritionStatus: language === 'en' ? 'Nutrition Status' : 'غذائی تجزیہ اور توازن کی رپورٹ',
     next: language === 'en' ? 'Next' : 'اگلا',
     back: language === 'en' ? 'Back' : 'واپس',
   };
@@ -103,21 +103,21 @@ export function Step4Status({
             <span className="text-2xl sm:text-3xl">📊</span>
             {t.nutritionStatus}
           </h2>
-          <p className="text-gray-600 text-xs sm:text-sm">
+          <p className="text-gray-600 text-xs sm:text-sm font-medium mt-0.5">
             {language === 'en'
               ? 'How your formula compares to this animal’s targets.'
-              : 'آپ کا فارمولا جانور کے اہداف سے کیسا ہے۔'}
+              : 'آپ کے فارمولے کی غذائیت اور جانور کی ضرورت کی مکمل جانچ:'}
           </p>
         </div>
         {ranges && (
           <span
-            className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 border ${
-              allGood ? 'bg-[#558b2f]/10 text-[#4d7c0f] border-[#558b2f]/30' : 'bg-amber-100 text-amber-900 border-amber-300'
+            className={`inline-flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-1.5 rounded-full flex-shrink-0 border shadow-2xs ${
+              allGood ? 'bg-[#558b2f]/15 text-[#3d650b] border-[#558b2f]/40' : 'bg-amber-100 text-amber-950 border-amber-300'
             }`}
           >
             {allGood
-              ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#558b2f]" />{language === 'en' ? 'All targets met' : 'تمام اہداف پورے'}</>
-              : <><AlertTriangle className="w-3.5 h-3.5 text-amber-700" />{onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ہدف پر'}</>}
+              ? <><CheckCircle2 className="w-4 h-4 text-[#558b2f]" />{language === 'en' ? 'All targets met' : '✓ ۱۰۰٪ متوازن فارمولا'}</>
+              : <><AlertTriangle className="w-4 h-4 text-amber-700" />{onTarget}/{TARGETED.length} {language === 'en' ? 'on target' : 'ضرورتیں پوری'}</>}
           </span>
         )}
       </div>
@@ -134,20 +134,21 @@ export function Step4Status({
       {/* Actionable advice only. When everything passes this is a single line
           instead of seven rows repeating what the cards already said. */}
       {allGood ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-[#558b2f]/30 bg-[#f4f8ee] px-3.5 py-3">
-          <CheckCircle2 className="w-4 h-4 text-[#558b2f] flex-shrink-0" />
-          <p className="text-[13px] font-bold text-[#0e3b5e]">
+        <div className="flex items-center gap-2.5 rounded-xl border border-[#558b2f]/40 bg-[#f4f8ee] px-4 py-3.5 shadow-2xs">
+          <CheckCircle2 className="w-5 h-5 text-[#558b2f] flex-shrink-0" />
+          <p className="text-xs sm:text-sm font-extrabold text-[#0e3b5e]">
             {language === 'en'
               ? 'Every nutrient is within its target range — this formula is ready to feed.'
-              : 'تمام غذائی اجزاء اپنے ہدف کے اندر ہیں — یہ فارمولا تیار ہے۔'}
+              : 'تمام غذائی اجزاء جانور کے ہدف کے مطابق ہیں — یہ فارمولا بالکل متوازن اور تیار ہے۔'}
           </p>
         </div>
       ) : fixes.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="space-y-2.5">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <span>💡</span>
             {language === 'en'
               ? `What to fix (${fixes.length})`
-              : `کیا درست کرنا ہے (${fixes.length})`}
+              : `تجویز کردہ ترمیم (فارمولا بہتر بنانے کے لیے ${fixes.length} تبدیلیاں)`}
           </h3>
           {fixes.map((rec, idx) => (
             <FixRow
@@ -169,12 +170,12 @@ export function Step4Status({
         formula={formula}
       />
 
-      <p className="text-[11px] text-slate-500 leading-relaxed flex gap-1.5">
-        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-slate-400" />
+      <p className="text-[11px] text-slate-600 leading-relaxed flex gap-1.5 font-medium bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-500" />
         <span>
           {language === 'en'
             ? 'Targets are for the CONCENTRATE mix only — the animal also gets fresh forage, hay or silage on top. Ask a vet for farm-specific adjustments.'
-            : 'یہ ہدف صرف کانسنٹریٹ کے لیے ہیں — جانور کو سبز چارہ، گھاس یا سائیلج بھی ملے گا۔ مخصوص مشورے کے لیے ڈاکٹر سے رجوع کریں۔'}
+            : 'یہ اہداف صرف ونڈہ فارمولا کے لیے ہیں — جانور کو حسبِ ضرورت سبز چارہ، توڑی یا سائیلج بھی فراہم کریں۔'}
         </span>
       </p>
     </motion.div>

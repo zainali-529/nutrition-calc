@@ -34,10 +34,10 @@ interface Step3FormulaProps {
 
 /** Bilingual names for the 4 LP modes, used in the "showing X recipe" line. */
 const MODE_LABEL: Record<OptimisationMode, { en: string; ur: string }> = {
-  min_cost:    { en: 'Cheapest',    ur: 'سستا' },
-  balanced:    { en: 'Balanced',    ur: 'متوازن' },
-  max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین' },
-  max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی' },
+  min_cost:    { en: 'Cheapest',    ur: 'سستا ترین (کم لاگت)' },
+  balanced:    { en: 'Balanced',    ur: 'متوازن (بہترین توازن)' },
+  max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین (بڑھوتری)' },
+  max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی (طاقت و دودھ)' },
 };
 
 export function Step3Formula({
@@ -53,6 +53,7 @@ export function Step3Formula({
 }: Step3FormulaProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [overrideVer, setOverrideVer] = useState(0);
+  const [showFullNutrients, setShowFullNutrients] = useState(false);
 
   // Auto-formulate state
   const [afError, setAfError] = useState<string | null>(null);
@@ -239,17 +240,17 @@ export function Step3Formula({
   }, [autoBalanceOnMount]);
 
   const t = {
-    formulaEditor: language === 'en' ? 'Formula Editor' : 'فارمولا ایڈیٹر',
+    formulaEditor: language === 'en' ? 'Formula Ingredients (kg)' : 'اجزاء کی کلو مقدار',
     weight: language === 'en' ? 'Weight (kg)' : 'وزن (کلو)',
-    price: language === 'en' ? 'Price/kg' : 'قیمت فی کلو',
+    price: language === 'en' ? 'Price/kg' : 'قیمت فی کلو (Rs)',
     total: language === 'en' ? 'Total' : 'کل',
     nutrients: language === 'en' ? 'Nutritional Summary' : 'غذائی خلاصہ',
     protein: language === 'en' ? 'Protein (CP)' : 'پروٹین',
-    energy: language === 'en' ? 'Energy (ME)' : 'توانائی (ME)',
-    fiber: language === 'en' ? 'Fiber (NDF)' : 'فائبر (NDF)',
+    energy: language === 'en' ? 'Energy (ME)' : 'توانائی',
+    fiber: language === 'en' ? 'Fiber (NDF)' : 'فائبر',
     adf: language === 'en' ? 'ADF' : 'ADF',
     fat: language === 'en' ? 'Fat' : 'چکنائی',
-    dm: language === 'en' ? 'Dry Matter' : 'خشک مادہ',
+    dm: language === 'en' ? 'Dry Matter' : 'خشک مادہ (DM)',
     tdn: language === 'en' ? 'TDN' : 'TDN',
     starch: language === 'en' ? 'Starch' : 'نشاستہ',
     ash: language === 'en' ? 'Ash' : 'راکھ',
@@ -258,6 +259,30 @@ export function Step3Formula({
     next: language === 'en' ? 'Next' : 'اگلا',
     back: language === 'en' ? 'Back' : 'واپس',
     costPerKg: language === 'en' ? 'Cost/kg' : 'قیمت فی کلو',
+  };
+
+  // Helper status badge for live summary bar
+  const renderMiniStatus = (val: number, range?: { min: number; max: number }, unit: string = '%') => {
+    if (!range) return null;
+    if (val < range.min) {
+      return (
+        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
+          ⚠️ Low ({range.min}{unit})
+        </span>
+      );
+    }
+    if (val > range.max) {
+      return (
+        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500 text-white shadow-2xs">
+          ⚠️ High ({range.max}{unit})
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#558b2f] text-white shadow-2xs">
+        ✓ OK
+      </span>
+    );
   };
 
   return (
@@ -279,74 +304,55 @@ export function Step3Formula({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
+      className="space-y-4 sm:space-y-6"
     >
       <div>
-        <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-          <span className="text-3xl">⚙️</span>
+        <h2 className="text-xl sm:text-2xl font-bold mb-1 flex items-center gap-2">
+          <span className="text-2xl sm:text-3xl">⚙️</span>
           {t.formulaEditor}
         </h2>
+        <p className="text-xs sm:text-sm text-slate-600 font-medium">
+          {language === 'en'
+            ? 'Adjust ingredient kg amounts below or tap a quick formula preset.'
+            : 'اجزاء کی کلو مقدار درج کریں یا خودکار فارمولا منتخب کریں:'}
+        </p>
       </div>
 
-      {/* Shared with Step 4 so the same numbers look the same in both screens. */}
-      <NutrientGrid
-        nutrients={nutrients}
-        ranges={ranges}
-        language={language}
-        untargeted="open"
-      />
-
-      <div className="text-xs text-gray-500 -mt-2">
-        {language === 'en'
-          ? '*Concentrate mix only (fed with forage/hay/silage). All values on DM basis.'
-          : '*صرف کانسنٹریٹ (چارہ/گھاس/سائیلج کے ساتھ)۔ تمام اقدار خشک مادہ پر۔'}
-      </div>
-
-      {/* Auto-Formulate — least-cost LP solver */}
-      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-2xl p-4 sm:p-5 shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-[#0e3b5e]/20">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-extrabold text-[#0e3b5e]">
-                {language === 'en' ? 'Auto-Formulate' : 'خودکار فارمولا'}
-              </h4>
-              {(() => {
-                const lockCount = formula.filter((f) => f.locked).length;
-                if (lockCount === 0) return null;
-                return (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                    <Lock className="w-3 h-3 text-amber-700" />
-                    {lockCount} {language === 'en' ? 'locked' : 'مقفل'}
-                  </span>
-                );
-              })()}
+      {/* Auto-Formulate — 4 Quick Recipe Presets Card */}
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 border-2 border-[#0e3b5e]/20 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0e3b5e] to-[#558b2f] text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+              <Sparkles className="w-4 h-4" />
             </div>
-            <p className="text-[11px] text-[#0e3b5e]/80 leading-relaxed font-medium">
-              {afMode
-                ? (language === 'en'
-                    ? <>Showing the <strong>{MODE_LABEL[afMode].en}</strong> recipe. Tap another to compare.</>
-                    : <>یہ <strong>{MODE_LABEL[afMode].ur}</strong> فارمولا ہے۔ موازنے کے لیے دوسرا دبائیں۔</>)
-                : formula.some((f) => f.locked)
-                  ? (language === 'en'
-                      ? 'Optimises unlocked ingredients while keeping locked ones fixed.'
-                      : 'غیر مقفل اجزاء کو بہتر کرتا ہے، مقفل اجزاء ثابت رہتے ہیں۔')
-                  : (language === 'en'
-                      ? 'Pick how you want the mix optimised for this animal and stage.'
-                      : 'اس جانور اور مرحلے کے لیے فارمولا کیسے بنایا جائے، منتخب کریں۔')}
-            </p>
+            <div>
+              <h4 className="text-xs sm:text-sm font-extrabold text-[#0e3b5e]">
+                {language === 'en' ? 'Quick Formula Presets' : 'خودکار تیار فارمولے'}
+              </h4>
+              <p className="text-[10px] sm:text-xs text-slate-500 font-semibold">
+                {language === 'en' ? 'Tap 1 to balance automatically' : 'ایک بٹن دبائیں اور فارمولا تیار'}
+              </p>
+            </div>
           </div>
+          {(() => {
+            const lockCount = formula.filter((f) => f.locked).length;
+            if (lockCount === 0) return null;
+            return (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                <Lock className="w-3 h-3 text-amber-700" />
+                {lockCount} {language === 'en' ? 'locked' : 'مقفل'}
+              </span>
+            );
+          })()}
         </div>
 
         {/* 4 optimisation mode buttons */}
-        <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([
-            { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',          tipEn: 'Minimise cost',                       tipUr: 'کم قیمت' },
-            { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'ہر غذائی جزو کو حد کے درمیان رکھیں' },
-            { mode: 'max_protein', icon: <Beef   className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین',   tipEn: 'Richest in CP (kg)',                  tipUr: 'زیادہ پروٹین' },
-            { mode: 'max_energy',  icon: <Zap    className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی',  tipEn: 'Highest ME (Mcal)',                   tipUr: 'زیادہ توانائی' },
+            { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا ترین',      tipEn: 'Minimise cost',                       tipUr: 'کم ترین لاگت پر فارمولا بنائیں' },
+            { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'تمام ضرورتوں کو بہترین توازن دیں' },
+            { mode: 'max_protein', icon: <Beef   className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین',   tipEn: 'Richest in CP (kg)',                  tipUr: 'جانور کی تیزی سے بڑھوتری کے لیے' },
+            { mode: 'max_energy',  icon: <Zap    className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی',  tipEn: 'Highest ME (Mcal)',                   tipUr: 'زیادہ دودھ اور توانائی کے لیے' },
           ] as const).map((m) => {
             const busy = afBusyMode === m.mode;
             const anyBusy = afBusyMode !== null;
@@ -360,7 +366,7 @@ export function Step3Formula({
                 onClick={() => handleAutoFormulate(m.mode)}
                 title={language === 'en' ? m.tipEn : m.tipUr}
                 aria-pressed={active}
-                className={`relative inline-flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold px-2.5 py-3 rounded-xl transition-all disabled:cursor-not-allowed ${
+                className={`relative inline-flex flex-col items-center justify-center gap-1 text-xs font-bold px-2 py-2.5 rounded-xl transition-all disabled:cursor-not-allowed ${
                   busy
                     ? 'bg-gradient-to-br from-[#0e3b5e] to-[#155e75] text-white shadow-lg ring-2 ring-[#0e3b5e]/30'
                     : active
@@ -371,8 +377,8 @@ export function Step3Formula({
                 }`}
               >
                 {active && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-[#0e3b5e] flex items-center justify-center shadow-xs">
-                    <Check className="w-3 h-3" strokeWidth={3} />
+                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-white text-[#0e3b5e] flex items-center justify-center shadow-xs">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3} />
                   </span>
                 )}
                 {busy ? <Sparkles className="w-4 h-4 animate-pulse text-amber-300" /> : m.icon}
@@ -407,20 +413,80 @@ export function Step3Formula({
         </AnimatePresence>
       </div>
 
-      {/* Why this formula? (Phase 4 diagnostics) */}
-      {afDiag && (
-        <WhyThisFormula
-          language={language}
-          diagnostics={afDiag}
-          batchSize={totalWeight > 0 ? totalWeight : 100}
-          costPremium={afMode !== 'min_cost' ? afPremium : undefined}
-        />
-      )}
+      {/* Sticky Real-Time Live Nutrition & Cost Summary Header */}
+      <div className="sticky top-16 sm:top-20 z-20 bg-gradient-to-r from-[#0e3b5e] via-[#0b3353] to-[#155480] text-white border-2 border-[#558b2f]/50 rounded-2xl p-3 sm:p-3.5 shadow-lg my-3.5 transition-all">
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
+            {/* Live Protein (CP) */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-200">{t.protein}:</span>
+              <span className="text-sm font-extrabold text-white tracking-tight">{nutrients.protein}%</span>
+              {renderMiniStatus(nutrients.protein, ranges?.protein)}
+            </div>
 
-      {/* Formula Items */}
+            {/* Live Energy (ME) */}
+            <div className="flex items-center gap-1.5 border-l ltr:border-l rtl:border-r border-white/20 ltr:pl-2.5 rtl:pr-2.5">
+              <span className="text-xs font-bold text-slate-200">{t.energy}:</span>
+              <span className="text-sm font-extrabold text-white tracking-tight">{nutrients.energy.toFixed(2)}</span>
+              {renderMiniStatus(nutrients.energy, ranges?.energy, ' Mcal')}
+            </div>
+
+            {/* Live Cost/kg */}
+            <div className="hidden xs:flex items-center gap-1.5 border-l ltr:border-l rtl:border-r border-white/20 ltr:pl-2.5 rtl:pr-2.5">
+              <span className="text-xs font-bold text-slate-200">{t.costPerKg}:</span>
+              <span className="text-sm font-extrabold text-amber-300">₨{nutrients.perKgPrice}</span>
+            </div>
+          </div>
+
+          {/* Toggle Full Nutrition Ranges Grid */}
+          <button
+            type="button"
+            onClick={() => setShowFullNutrients(!showFullNutrients)}
+            className="text-xs font-extrabold px-3 py-1.5 rounded-xl border border-white/30 hover:border-white bg-white/15 hover:bg-white/25 text-white transition-all flex items-center gap-1 flex-shrink-0 tap-transparent shadow-2xs"
+          >
+            <span>{showFullNutrients ? (language === 'en' ? 'Hide Ranges' : 'تلافی کی حدود چھپائیں') : (language === 'en' ? 'Full Ranges 📊' : 'پوری غذائی ضرورت 📊')}</span>
+          </button>
+        </div>
+
+        {/* Collapsible Full Nutrient Grid */}
+        <AnimatePresence>
+          {showFullNutrients && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-3 pt-3 border-t border-white/20 overflow-hidden bg-white text-slate-900 rounded-xl p-3"
+            >
+              <NutrientGrid
+                nutrients={nutrients}
+                ranges={ranges}
+                language={language}
+                untargeted="open"
+              />
+              <div className="text-[11px] text-gray-500 mt-2 text-center font-medium">
+                {language === 'en'
+                  ? '*Concentrate mix values (fed with forage/hay). All values on DM basis.'
+                  : '*صرف ونڈہ فارمولا (سبز چارے کے ساتھ دیا جاتا ہے)۔'}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Formula Items — The Core Interactive Calculator (Front & Center!) */}
       <div className="space-y-3">
-        <h3 className="font-bold text-lg">{t.formulaEditor} Items</h3>
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-extrabold text-base sm:text-lg text-[#0e3b5e] flex items-center gap-2">
+            <span>🌾</span>
+            {t.formulaEditor}
+          </h3>
+          <span className="text-xs font-bold text-slate-500">
+            {formula.length} {language === 'en' ? 'ingredients' : 'اجزاء'}
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
           {formula.map((item, idx) => (
             <motion.div
               key={idx}
@@ -428,21 +494,21 @@ export function Step3Formula({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
+              className="bg-white rounded-xl p-3 sm:p-4 border-2 border-slate-200 hover:border-slate-300 flex flex-col sm:flex-row sm:items-center gap-3 shadow-2xs"
             >
               {/* Top row on mobile: icon + name + remove button (right-aligned) */}
               <div className="flex items-center gap-3 sm:contents">
-                <span className="text-2xl flex-shrink-0">{getIngredientIcon(item.key)}</span>
+                <span className="text-2xl sm:text-3xl flex-shrink-0">{getIngredientIcon(item.key)}</span>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{item.name}</p>
+                    <p className="font-extrabold text-gray-900 text-sm leading-tight truncate">{item.name}</p>
                     {hasOverride(item.key) && (
                       <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title={language === 'en' ? 'Custom nutrition values' : 'ترمیم شدہ غذائیت'} />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {item.kg > 0 && `₨${((item.price || 0) * item.kg).toFixed(0)}`}
+                  <p className="text-xs text-slate-500 font-medium">
+                    {item.kg > 0 && `₨${((item.price || 0) * item.kg).toLocaleString('en-PK')}`}
                   </p>
                 </div>
 
@@ -451,7 +517,7 @@ export function Step3Formula({
                   <motion.button
                     whileTap={{ scale: 0.92 }}
                     onClick={() => handleRemove(idx)}
-                    className="sm:hidden text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors flex-shrink-0 tap-transparent"
+                    className="sm:hidden text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors flex-shrink-0 tap-transparent"
                     title="Remove item"
                     aria-label="Remove item"
                   >
@@ -461,12 +527,12 @@ export function Step3Formula({
               </div>
 
               {/* Bottom row on mobile: controls + inputs */}
-              <div className="flex gap-2 items-end flex-wrap sm:flex-nowrap">
+              <div className="flex gap-2 items-end flex-wrap sm:flex-nowrap" dir="ltr">
                 {/* Edit nutrition — opens the detail modal */}
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setEditingKey(item.key)}
-                  className="p-2 rounded transition-colors text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 tap-transparent"
+                  className="p-2 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 tap-transparent"
                   title={language === 'en' ? 'Edit nutrition' : 'غذائیت ترمیم'}
                   aria-label={language === 'en' ? 'Edit nutrition' : 'غذائیت ترمیم'}
                 >
@@ -477,10 +543,10 @@ export function Step3Formula({
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={() => handleToggleLock(idx)}
-                  className={`p-2 rounded transition-colors tap-transparent ${
+                  className={`p-2 rounded-lg transition-colors border tap-transparent ${
                     item.locked
-                      ? 'text-amber-700 bg-amber-100 hover:bg-amber-200'
-                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                      ? 'text-amber-700 bg-amber-100 hover:bg-amber-200 border-amber-300 font-bold'
+                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 border-slate-200'
                   }`}
                   title={
                     item.locked
@@ -489,11 +555,11 @@ export function Step3Formula({
                   }
                   aria-label={item.locked ? 'Unlock' : 'Lock'}
                 >
-                  {item.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                  {item.locked ? <Lock className="w-4 h-4 text-amber-800" /> : <Unlock className="w-4 h-4" />}
                 </motion.button>
 
-                <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[80px]">
-                  <label className={`text-xs ${item.locked ? 'text-amber-700 font-semibold' : 'text-gray-500'}`}>
+                <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[90px]">
+                  <label className={`text-xs ${item.locked ? 'text-amber-800 font-extrabold' : 'text-slate-600 font-bold'}`}>
                     {t.weight}{item.locked && ' 🔒'}
                   </label>
                   <Input
@@ -502,12 +568,12 @@ export function Step3Formula({
                     onChange={(e) => handleWeightChange(idx, parseFloat(e.target.value) || 0)}
                     min="0"
                     step="0.1"
-                    className={`w-full sm:w-24 text-sm h-10 ${item.locked ? 'bg-amber-50 border-amber-300 font-semibold text-amber-900' : ''}`}
+                    className={`w-full sm:w-28 text-sm h-10 font-bold ${item.locked ? 'bg-amber-50 border-amber-300 text-amber-950' : 'border-slate-300 text-[#0e3b5e]'}`}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[80px]">
-                  <label className="text-xs text-gray-500">{t.price}</label>
+                  <label className="text-xs text-slate-600 font-bold">{t.price}</label>
                   <Input
                     type="number"
                     value={item.price || ''}
@@ -515,7 +581,7 @@ export function Step3Formula({
                     placeholder="0"
                     min="0"
                     step="1"
-                    className="w-full sm:w-24 text-sm h-10"
+                    className="w-full sm:w-24 text-sm h-10 font-bold border-slate-300"
                   />
                 </div>
 
@@ -524,7 +590,7 @@ export function Step3Formula({
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleRemove(idx)}
-                    className="hidden sm:block text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition-colors tap-transparent"
+                    className="hidden sm:block text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors border border-slate-200 tap-transparent"
                     title="Remove item"
                     aria-label="Remove item"
                   >
@@ -538,14 +604,14 @@ export function Step3Formula({
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 rounded-2xl p-4 sm:p-5 border-2 border-[#0e3b5e]/20 space-y-3 shadow-xs">
+      {/* Summary & Batch Scaling Box */}
+      <div className="bg-gradient-to-br from-[#0e3b5e]/5 via-[#558b2f]/5 to-[#0e3b5e]/10 rounded-2xl p-4 sm:p-5 border-2 border-[#0e3b5e]/20 space-y-3 shadow-xs" dir="ltr">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-slate-600 block mb-1 font-medium">
+            <label className="text-xs text-slate-600 block mb-1 font-extrabold">
               {t.total} Weight
               <span className="ml-1 text-[10px] text-[#558b2f] font-bold">
-                ({language === 'en' ? 'edit to scale' : 'سکیل کے لیے ترمیم کریں'})
+                ({language === 'en' ? 'edit to scale' : 'سکیل کریں'})
               </span>
             </label>
             <div className="flex items-center gap-1.5">
@@ -556,19 +622,19 @@ export function Step3Formula({
                 disabled={totalWeight === 0}
                 min="0"
                 step="10"
-                className="w-24 text-2xl font-extrabold text-[#0e3b5e] bg-white/80 border border-slate-300 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] disabled:opacity-50 shadow-xs"
+                className="w-24 text-2xl font-extrabold text-[#0e3b5e] bg-white border border-slate-300 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] disabled:opacity-50 shadow-xs"
               />
               <span className="text-lg font-bold text-[#0e3b5e]">kg</span>
             </div>
             <p className="text-xs text-slate-500 mt-1 font-medium">as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-slate-600 font-medium">{t.total} DM</p>
+            <p className="text-xs text-slate-600 font-extrabold">{t.total} DM</p>
             <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">{nutrients.totalDM.toFixed(2)} kg</p>
             <p className="text-xs text-[#558b2f] mt-1 font-bold">{nutrients.dm}% of as-fed</p>
           </div>
           <div>
-            <p className="text-xs text-slate-600 font-medium">{t.total} Cost</p>
+            <p className="text-xs text-slate-600 font-extrabold">{t.total} Cost</p>
             <p className="text-2xl font-extrabold text-[#0e3b5e] mt-1">₨{totalCost.toLocaleString('en-PK')}</p>
             <p className="text-xs text-slate-500 mt-1 font-semibold">
               {t.costPerKg}: <span className="text-[#0e3b5e] font-bold">₨{nutrients.perKgPrice}</span>
@@ -591,7 +657,7 @@ export function Step3Formula({
                   className={`text-xs font-bold px-3 py-1 rounded-full transition-all ${
                     isActive
                       ? 'bg-[#0e3b5e] text-white shadow-sm'
-                      : 'bg-white/80 text-[#0e3b5e] hover:bg-white border border-[#0e3b5e]/20 hover:border-[#558b2f]'
+                      : 'bg-white text-[#0e3b5e] hover:bg-white border border-[#0e3b5e]/20 hover:border-[#558b2f]'
                   }`}
                 >
                   {s} kg
@@ -601,6 +667,16 @@ export function Step3Formula({
           </div>
         )}
       </div>
+
+      {/* Why this formula? (Phase 4 diagnostics) */}
+      {afDiag && (
+        <WhyThisFormula
+          language={language}
+          diagnostics={afDiag}
+          batchSize={totalWeight > 0 ? totalWeight : 100}
+          costPremium={afMode !== 'min_cost' ? afPremium : undefined}
+        />
+      )}
     </motion.div>
     </>
   );

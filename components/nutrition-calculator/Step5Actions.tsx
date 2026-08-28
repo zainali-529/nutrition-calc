@@ -160,38 +160,38 @@ export function Step5Actions({
   const onTarget = countOnTarget(nutrients, ranges);
 
   const t = {
-    formulaComplete: language === 'en' ? 'Formula ready' : 'فارمولا تیار',
+    formulaComplete: language === 'en' ? 'Formula ready' : 'فارمولا کامیابی سے تیار ہو گیا! 🎉',
     congratulations: language === 'en'
       ? 'Save it, share it, or print it for the feed mill.'
-      : 'محفوظ کریں، شیئر کریں، یا فیڈ مل کے لیے پرنٹ کریں۔',
+      : 'فارمولا محفوظ کریں، واٹس ایپ پر شیئر کریں یا فیڈ مل کے لیے پرنٹ نکالیں:',
     saveFarmula: language === 'en' ? 'Save Formula' : 'فارمولا محفوظ کریں',
-    saveDesc: language === 'en' ? 'Keep it on this device to reuse later' : 'اس آلے میں محفوظ رکھیں',
-    savedLabel: language === 'en' ? 'Saved' : 'محفوظ ہو گیا',
-    savedHint: language === 'en' ? 'Find it under the bookmark icon' : 'بک مارک آئیکن میں دیکھیں',
-    shareWhatsApp: language === 'en' ? 'WhatsApp' : 'واٹس ایپ',
-    shareDesc: language === 'en' ? 'Send as a message' : 'پیغام کے طور پر بھیجیں',
+    saveDesc: language === 'en' ? 'Keep it on this device to reuse later' : 'آئندہ استعمال کے لیے اپنے فون میں محفوظ کریں',
+    savedLabel: language === 'en' ? 'Saved' : '✓ محفوظ ہو گیا',
+    savedHint: language === 'en' ? 'Find it under the bookmark icon' : 'اوپر بک مارک آئیکن میں محفوظ فارمولے دیکھیں',
+    shareWhatsApp: language === 'en' ? 'WhatsApp' : 'واٹس ایپ پر شیئر',
+    shareDesc: language === 'en' ? 'Send as a message' : 'فارمولا پیغام کے طور پر بھیجیں',
     // This button writes a .txt file, not a PDF. It was labelled "Download PDF",
     // which was simply false and left two buttons appearing to do the same job —
     // the PDF path is the print dialog's "Save as PDF".
-    downloadPDF: language === 'en' ? 'Text file' : 'ٹیکسٹ فائل',
-    downloadDesc: language === 'en' ? 'Download as .txt' : '.txt ڈاؤن لوڈ کریں',
-    createNew: language === 'en' ? 'Start a new formula' : 'نیا فارمولا شروع کریں',
-    saved: language === 'en' ? 'Formula saved successfully!' : 'فارمولا کامیابی سے محفوظ ہو گیا!',
-    printRecipe: language === 'en' ? 'Print / PDF' : 'پرنٹ / PDF',
+    downloadPDF: language === 'en' ? 'Text file' : 'ٹیکسٹ فائل (.txt)',
+    downloadDesc: language === 'en' ? 'Download as .txt' : 'ٹیکسٹ فائل ڈاؤن لوڈ کریں',
+    createNew: language === 'en' ? 'Start a new formula' : '🔄 نیا فارمولا شروع کریں',
+    saved: language === 'en' ? 'Formula saved successfully!' : 'فارمولا کامیابی سے فون میں محفوظ ہو گیا!',
+    printRecipe: language === 'en' ? 'Print / PDF' : 'پرنٹ / PDF ڈاؤن لوڈ',
     printDesc:   language === 'en'
       ? 'Print or "Save as PDF"'
-      : 'پرنٹ یا PDF محفوظ کریں',
-    breakdown:     language === 'en' ? 'See background calculation' : 'پیچھے کا حساب دیکھیں',
+      : 'پرنٹ کریں یا PDF محفوظ کریں',
+    breakdown:     language === 'en' ? 'See background calculation' : 'حساب کی تفصیلی سائنسی رپورٹ',
     breakdownDesc: language === 'en'
       ? 'See every step of the maths — and download it as a table'
-      : 'حساب کا ہر مرحلہ دیکھیں — اور ٹیبل ڈاؤن لوڈ کریں',
-    summary: language === 'en' ? 'Formula summary' : 'فارمولا خلاصہ',
+      : 'غذائیت کا ہر حساب دیکھیں اور ٹیبل ڈاؤن لوڈ کریں',
+    summary: language === 'en' ? 'Formula summary' : 'فارمولے کا خلاصہ',
     animalLbl: language === 'en' ? 'Animal' : 'جانور',
-    stageLbl: language === 'en' ? 'Stage' : 'مرحلہ',
-    weightLbl: language === 'en' ? 'Batch' : 'بیچ',
-    perKgLbl: language === 'en' ? 'Cost / kg' : 'فی کلو',
+    stageLbl: language === 'en' ? 'Stage' : 'مرحلہ / عمر',
+    weightLbl: language === 'en' ? 'Batch' : 'بیچ سائز',
+    perKgLbl: language === 'en' ? 'Cost / kg' : 'قیمت فی کلو',
     totalLbl: language === 'en' ? 'Total cost' : 'کل لاگت',
-    targetsLbl: language === 'en' ? 'Targets met' : 'اہداف',
+    targetsLbl: language === 'en' ? 'Targets met' : 'غذائی اہداف',
   };
 
   const handleSave = async () => {
@@ -245,20 +245,60 @@ export function Step5Actions({
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     registerDownloadTap();
     setLoadingAction('pdf');
     try {
       const text = exportFormulaAsText(formula, language);
+      const fileName = `rumicalc-formula-${Date.now()}.txt`;
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+
+      // 1. Try Mobile Web Share API first (best native experience on iOS & Android mobile)
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+        try {
+          const file = new File([blob], fileName, { type: 'text/plain' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: language === 'en' ? 'RumiCalc Formula' : 'رومی کیلک فارمولا',
+              files: [file],
+            });
+            return;
+          }
+        } catch {
+          // If user cancels share or file sharing is not supported, fall through to blob download
+        }
+      }
+
+      // 2. Blob URL Download (Works on Chrome, Safari, Firefox, Opera)
+      const url = URL.createObjectURL(blob);
       const element = document.createElement('a');
-      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-      element.setAttribute('download', `formula-${Date.now()}.txt`);
+      element.href = url;
+      element.download = fileName;
       element.style.display = 'none';
       document.body.appendChild(element);
       element.click();
-      document.body.removeChild(element);
+
+      // Clean up after download completes
+      setTimeout(() => {
+        if (document.body.contains(element)) {
+          document.body.removeChild(element);
+        }
+        URL.revokeObjectURL(url);
+      }, 1000);
     } catch (error) {
-      console.error('Error downloading:', error);
+      console.error('Error downloading text file:', error);
+      // Fallback: Copy to clipboard if file saving is totally blocked in webview
+      try {
+        const text = exportFormulaAsText(formula, language);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          alert(language === 'en' 
+            ? 'Formula copied to clipboard!' 
+            : 'فارمولا کلپ بورڈ میں کاپی ہو گیا!');
+        }
+      } catch {
+        // ignore
+      }
     } finally {
       setLoadingAction(null);
     }
@@ -272,13 +312,38 @@ export function Step5Actions({
    * which hide everything except the .printable-recipe block (rendered at the
    * bottom of this component).
    */
-  const handlePrint = () => {
+  const handlePrint = async () => {
     registerDownloadTap();
     setLoadingAction('print');
     try {
-      window.print();
+      if (typeof window !== 'undefined' && typeof window.print === 'function') {
+        // Ensure no stale data-printing dataset exists
+        delete document.body.dataset.printing;
+        window.print();
+      } else {
+        throw new Error('window.print not supported');
+      }
+    } catch (error) {
+      console.warn('Print error or unsupported browser:', error);
+      // Fallback for mobile WebViews / unsupported browsers
+      try {
+        const text = exportFormulaAsText(formula, language);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          alert(language === 'en'
+            ? 'Print is not supported in this browser. Formula copied to clipboard!'
+            : 'اس براؤزر میں پرنٹ میسر نہیں۔ فارمولا کلپ بورڈ پر کاپی کر دیا گیا ہے!');
+        } else {
+          const win = window.open('', '_blank');
+          if (win) {
+            win.document.write(`<pre style="font-family:sans-serif;white-space:pre-wrap;padding:20px;">${text}</pre>`);
+            win.document.close();
+          }
+        }
+      } catch {
+        // ignore
+      }
     } finally {
-      // Tiny defer so the print dialog has time to open before the spinner clears
       setTimeout(() => setLoadingAction(null), 300);
     }
   };
@@ -293,37 +358,34 @@ export function Step5Actions({
       {/* Slim success header. The old version was a full-width saturated
           gradient block with a 5xl emoji, which cost most of a phone screen to
           say one thing the stepper already implies. */}
-      <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 shadow-2xs">
         <span className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
           <CheckCircle2 className="w-5 h-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-base sm:text-lg font-bold text-emerald-900 leading-tight">{t.formulaComplete}</h2>
-          <p className="text-[11px] sm:text-xs text-emerald-700">{t.congratulations}</p>
+          <h2 className="text-base sm:text-lg font-bold text-emerald-950 leading-tight">{t.formulaComplete}</h2>
+          <p className="text-[11px] sm:text-xs text-emerald-800 font-medium">{t.congratulations}</p>
         </div>
       </div>
 
-      {/* Summary — the numbers a farmer actually needs at hand-off.
-          "Items: 5" and the date told them nothing they'd act on; batch size,
-          cost per kg, total cost and targets-met are what matter when taking
-          this to a feed mill. Date moves to a small footer line. */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      {/* Summary — the numbers a farmer actually needs at hand-off. */}
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
         <div className="px-4 py-2.5 border-b border-slate-100">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{t.summary}</h3>
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600">{t.summary}</h3>
         </div>
 
         <dl className="divide-y divide-slate-100">
           <div className="flex items-baseline justify-between gap-3 px-4 py-2">
-            <dt className="text-xs text-slate-500">{t.animalLbl}</dt>
-            <dd className="text-sm font-semibold text-slate-900 text-right">{animal}</dd>
+            <dt className="text-xs text-slate-500 font-semibold">{t.animalLbl}</dt>
+            <dd className="text-sm font-bold text-slate-900 text-right">{animal}</dd>
           </div>
           <div className="flex items-baseline justify-between gap-3 px-4 py-2">
-            <dt className="text-xs text-slate-500">{t.stageLbl}</dt>
-            <dd className="text-sm font-semibold text-slate-900 text-right">{stage}</dd>
+            <dt className="text-xs text-slate-500 font-semibold">{t.stageLbl}</dt>
+            <dd className="text-sm font-bold text-slate-900 text-right">{stage}</dd>
           </div>
         </dl>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 border-t border-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 border-t border-slate-100" dir="ltr">
           {[
             { label: t.weightLbl, value: `${nutrients.totalAsFed.toFixed(0)} kg` },
             { label: t.perKgLbl,  value: `₨${nutrients.perKgPrice.toFixed(2)}` },

@@ -149,28 +149,28 @@ export function DailyFeedingGuide({
 
   // ── Localised labels ──────────────────────────────────────────────────────
   const t = {
-    title:      language === 'en' ? 'Daily Concentrate Guide' : 'روزانہ کانسنٹریٹ گائیڈ',
+    title:      language === 'en' ? 'Daily Concentrate Guide' : 'روزانہ ونڈہ کی خوراک کا حساب',
     subtitle:   language === 'en'
       ? 'How much of THIS concentrate to feed per day'
-      : 'اس کانسنٹریٹ کو روزانہ کتنا دینا ہے',
-    bodyWt:     language === 'en' ? 'Body Weight (kg)' : 'جسمانی وزن (کلو)',
-    milk:       language === 'en' ? 'Milk Yield (L/day)' : 'دودھ (لیٹر/دن)',
-    feedDaily:  language === 'en' ? 'Feed per day' : 'روزانہ خوراک',
-    perDay:     language === 'en' ? 'per day' : 'روزانہ',
-    breakdown:  language === 'en' ? 'How we calculated it' : 'حساب کا طریقہ',
-    dailyCost:  language === 'en' ? 'Daily cost' : 'روزانہ خرچ',
-    atPrice:    language === 'en' ? 'at' : 'بقدر',
+      : 'اس فارمولے کے مطابق جانور کو روزانہ کتنا ونڈہ دینا ہے:',
+    bodyWt:     language === 'en' ? 'Body Weight (kg)' : 'جانور کا جسمانی وزن (کلو)',
+    milk:       language === 'en' ? 'Milk Yield (L/day)' : 'روزانہ دودھ کی پیداوار (لیٹر)',
+    feedDaily:  language === 'en' ? 'Feed per day' : 'روزانہ درکار ونڈہ',
+    perDay:     language === 'en' ? 'per day' : 'روزانہ فی جانور',
+    breakdown:  language === 'en' ? 'How we calculated it' : 'خوراک کے حساب کی سائنسی تفصیلات',
+    dailyCost:  language === 'en' ? 'Daily cost' : 'روزانہ کا کل خرچ',
+    atPrice:    language === 'en' ? 'at' : 'نرخ:',
     perKg:      language === 'en' ? '/kg as-fed' : 'فی کلو',
     // The TMR calculator has shipped (/tmr) — this used to say "coming soon".
     forageNote: language === 'en'
       ? 'Feed alongside fresh forage, hay, or silage. To formulate the forage and concentrate together, use the TMR calculator.'
-      : 'تازہ چارہ، گھاس یا سائیلج کے ساتھ دیں۔ چارہ اور کانسنٹریٹ ایک ساتھ بنانے کے لیے TMR کیلکولیٹر استعمال کریں۔',
+      : 'یہ مقدار صرف ونڈے کے لیے ہے۔ سبز چارہ، توڑی یا سائیلج اس کے علاوہ حسبِ ضرورت دیں۔ (چارہ اور ونڈہ اکٹھا مکس کرنے کے لیے TMR کیلکولیٹر استعمال کریں)',
     water:      language === 'en'
       ? 'Always provide fresh clean water (≈50 L/day for dairy cow, 5 L per L of milk extra)'
-      : 'ہمیشہ صاف پانی فراہم کریں (دودھیل گائے کے لیے ~50 لیٹر/دن، ہر لیٹر دودھ پر اضافی 5 لیٹر)',
+      : 'جانور کو ہر وقت صاف پانی میسر رکھیں۔ (دودھیل گائے/بھینس کے لیے ~۵۰ لیٹر روزانہ + ہر لیٹر دودھ پر اضافی ۵ لیٹر)',
     needAnimal: language === 'en'
       ? 'Select animal and stage in Step 1 to see the feeding guide'
-      : 'خوراک گائیڈ کے لیے مرحلہ 1 میں جانور منتخب کریں',
+      : 'خوراک کی گائیڈ دیکھنے کے لیے مرحلہ 1 میں جانور منتخب کریں',
   };
 
   if (!animalId) {

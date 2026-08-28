@@ -13,6 +13,7 @@ interface FooterProps {
   canProceed?: boolean;
   onNext?: () => void;
   onBack?: () => void;
+  onLogoClick?: (e?: React.MouseEvent) => void;
   nextLabel?: string;
   backLabel?: string;
   stepNameEn?: string;
@@ -38,6 +39,7 @@ export function Footer({
   canProceed = true,
   onNext,
   onBack,
+  onLogoClick,
   nextLabel,
   backLabel,
   stepNameEn,
@@ -99,12 +101,12 @@ export function Footer({
   ];
 
   return (
-    <footer className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-5px_25px_rgba(14,59,94,0.09)] print:hidden">
+    <footer className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-5px_25px_rgba(14,59,94,0.09)] print:hidden pb-safe">
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 space-y-2">
         {/* Navigation Controls Row — shown on steps 1–4 */}
         {isNavigable && (
-          <div className="flex items-center justify-between gap-2.5 sm:gap-4 pb-2 border-b border-slate-100">
-            {/* Back Button */}
+          <div className="flex items-center justify-between gap-2.5 sm:gap-4 sm:pb-2 sm:border-b sm:border-slate-100">
+            {/* Back Button — Left in LTR (English), Right in RTL (Urdu) */}
             <div className="flex-1 max-w-[130px] sm:max-w-[160px]">
               {currentStep > 0 && onBack ? (
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
@@ -158,7 +160,7 @@ export function Footer({
               </div>
             </div>
 
-            {/* Next Button */}
+            {/* Next Button — Right in LTR (English), Left in RTL (Urdu) */}
             <div className="flex-1 max-w-[130px] sm:max-w-[180px]">
               <motion.div whileHover={{ scale: canProceed ? 1.02 : 1 }} whileTap={{ scale: canProceed ? 0.97 : 1 }}>
                 <Button
@@ -184,20 +186,20 @@ export function Footer({
         )}
 
         {/* Unified Branding & Social Media Strip */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+        <div className={`flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left ${isNavigable ? 'hidden sm:flex' : 'flex'}`}>
           {/* Brand Info + Copyright */}
           <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-1.5 group">
+            <a href="/" onClick={onLogoClick} className="flex items-center gap-1.5 group cursor-pointer">
               <img
                 src="/rumicalc-logo.png"
                 alt="RumiCalc Logo"
                 className="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded-lg shadow-xs group-hover:scale-105 transition-transform"
               />
-              <span className="font-extrabold text-sm sm:text-base tracking-tight">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight inline-flex items-center" dir="ltr">
                 <span className="text-[#0e3b5e]">Rumi</span>
                 <span className="text-[#558b2f]">Calc</span>
               </span>
-            </Link>
+            </a>
             <span className="text-slate-300">|</span>
             <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium whitespace-nowrap">
               © {currentYear} {t.rights}

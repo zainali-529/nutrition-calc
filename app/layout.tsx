@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Noto_Sans_Arabic } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { NutritionBackground } from '@/components/NutritionBackground'
@@ -7,6 +7,11 @@ import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const notoSansArabic = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-urdu',
+});
 
 export const metadata: Metadata = {
   title: 'RumiCalc | Livestock Ration & TMR Calculator | رومی کیلک',
@@ -54,7 +59,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning className="font-sans antialiased min-h-screen bg-[#f8fafc] relative selection:bg-[#558b2f]/20 selection:text-[#0e3b5e]">
+      <body suppressHydrationWarning className={`${notoSansArabic.variable} font-sans antialiased min-h-screen bg-[#f8fafc] relative selection:bg-[#558b2f]/20 selection:text-[#0e3b5e]`}>
         {/* Animated Nutrition Calculator Background with Floating Keycaps */}
         <NutritionBackground />
 

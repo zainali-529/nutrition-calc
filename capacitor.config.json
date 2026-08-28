@@ -1,0 +1,15 @@
+{
+  "appId": "com.sabtain.rumicalc",
+  "appName": "RumiCalc",
+  "webDir": "out",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0e3b5e",
+      "overlaysWebView": false
+    }
+  }
+}

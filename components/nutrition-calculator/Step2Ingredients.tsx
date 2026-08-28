@@ -84,7 +84,7 @@ function usageTier(maxInclusion: number) {
   if (maxInclusion >= 25) {
     return {
       key: 'free' as const,
-      en: 'Use freely', ur: 'کھل کر استعمال',
+      en: 'Use freely', ur: 'بغیر کسی پابندی کے استعمال کریں',
       chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       icon: '👍',
     };
@@ -92,14 +92,14 @@ function usageTier(maxInclusion: number) {
   if (maxInclusion >= 5) {
     return {
       key: 'medium' as const,
-      en: 'Medium amount', ur: 'درمیانی مقدار',
+      en: 'Medium amount', ur: 'اعتدال میں شامل کریں',
       chip: 'bg-amber-50 text-amber-800 border-amber-200',
       icon: '⚖️',
     };
   }
   return {
     key: 'small' as const,
-    en: 'Small amount only', ur: 'تھوڑی مقدار',
+    en: 'Small amount only', ur: 'صرف کم مقدار رکھیں',
     chip: 'bg-rose-50 text-rose-700 border-rose-200',
     icon: '⚠️',
   };
@@ -371,7 +371,43 @@ function IngredientCard({
   );
 }
 
+const CATEGORY_THEMES: Record<
+  string,
+  {
+    bg: string;
+    border: string;
+    titleColor: string;
+  }
+> = {
+  energy: {
+    bg: 'bg-gradient-to-br from-amber-50/80 via-amber-50/30 to-orange-50/30',
+    border: 'border-amber-300/80 hover:border-amber-400',
+    titleColor: 'text-amber-950',
+  },
+  protein: {
+    bg: 'bg-gradient-to-br from-blue-50/80 via-slate-50/30 to-indigo-50/30',
+    border: 'border-blue-300/80 hover:border-blue-400',
+    titleColor: 'text-blue-950',
+  },
+  fiber: {
+    bg: 'bg-gradient-to-br from-emerald-50/80 via-teal-50/30 to-green-50/30',
+    border: 'border-emerald-300/80 hover:border-emerald-400',
+    titleColor: 'text-emerald-950',
+  },
+  fat: {
+    bg: 'bg-gradient-to-br from-orange-50/80 via-amber-50/30 to-rose-50/30',
+    border: 'border-orange-300/80 hover:border-orange-400',
+    titleColor: 'text-orange-950',
+  },
+  supplement: {
+    bg: 'bg-gradient-to-br from-purple-50/80 via-slate-50/30 to-violet-50/30',
+    border: 'border-purple-300/80 hover:border-purple-400',
+    titleColor: 'text-purple-950',
+  },
+};
+
 function IngredientGroup({
+  categoryKey,
   title,
   language,
   ingredients,
@@ -382,6 +418,7 @@ function IngredientGroup({
   onIngredientInfo,
   onIngredientDelete,
 }: {
+  categoryKey: string;
   title: string;
   language: 'en' | 'ur';
   ingredients: string[];
@@ -394,6 +431,12 @@ function IngredientGroup({
   /** Invoked when the user clicks the trash icon on a custom-ingredient card. */
   onIngredientDelete: (ingredientKey: string) => void;
 }) {
+  const theme = CATEGORY_THEMES[categoryKey] || {
+    bg: 'bg-slate-50/80',
+    border: 'border-slate-300/80',
+    titleColor: 'text-slate-900',
+  };
+
   const isValid = selected.length >= minRequired;
   const needed = Math.max(0, minRequired - selected.length);
 
@@ -414,8 +457,8 @@ function IngredientGroup({
   })();
 
   const statusStyle = minRequired === 0
-    ? (selected.length > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')
-    : (isValid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800');
+    ? (selected.length > 0 ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300' : 'bg-slate-200/70 text-slate-700 border-slate-300')
+    : (isValid ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300' : 'bg-amber-100/90 text-amber-900 border-amber-300');
 
   // Count of solver-recommended items sitting in this section, so the user knows
   // to look here even before scrolling to the highlighted card.
@@ -425,19 +468,19 @@ function IngredientGroup({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-3"
+      className={`rounded-2xl border-2 p-3.5 sm:p-5 transition-all space-y-3.5 shadow-2xs ${theme.bg} ${theme.border}`}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="text-lg font-bold flex items-center gap-2">
+        <h3 className={`text-base sm:text-lg font-extrabold flex items-center gap-2 ${theme.titleColor}`}>
           {title}
           {recoHere > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
               <Sparkles className="w-2.5 h-2.5" />
               {recoHere} {language === 'en' ? 'suggested' : 'تجویز'}
             </span>
           )}
         </h3>
-        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyle}`}>
+        <span className={`text-xs font-extrabold px-3 py-1 rounded-full border shadow-2xs ${statusStyle}`}>
           {status}
           {minRequired > 0 && !isValid && (
             <span className="ml-1 font-normal opacity-70">
@@ -638,12 +681,12 @@ function FeasibilityGuide({
   // headline states the ACTION, not the problem — "Add one more ingredient"
   // tells the farmer what to do; "Adjust your selection" does not.
   const title = (() => {
-    if (status.kind === 'feasible')   return language === 'en' ? "Looks good — you're ready" : 'سب ٹھیک ہے — آپ تیار ہیں';
+    if (status.kind === 'feasible')   return language === 'en' ? "Looks good — you're ready" : 'فارمولا تیار ہے — اگلا مرحلہ منتخب کریں';
     if (status.kind === 'no_targets') return language === 'en' ? 'Pick an animal and stage first' : 'پہلے جانور اور مرحلہ منتخب کریں';
-    if (status.kind === 'pending')    return language === 'en' ? 'Keep selecting'   : 'منتخب کرتے رہیں';
+    if (status.kind === 'pending')    return language === 'en' ? 'Keep selecting'   : 'اجزاء کا انتخاب جاری رکھیں';
     const oneTapFixes = status.analysis?.fixes.some((f) => f.kind === 'exact_fix');
-    if (oneTapFixes) return language === 'en' ? 'Add one more ingredient' : 'ایک اور جزو شامل کریں';
-    return language === 'en' ? 'Add a few more ingredients' : 'مزید اجزاء شامل کریں';
+    if (oneTapFixes) return language === 'en' ? 'Add one more ingredient' : 'فارمولا مکمل کرنے کے لیے ۱ مزید جزو چنیں';
+    return language === 'en' ? 'Add a few more ingredients' : 'توازن کے لیے کچھ اور اجزاء شامل کریں';
   })();
 
   // Subtitle for non-infeasible states (the infeasible state renders a richer body).
@@ -651,12 +694,12 @@ function FeasibilityGuide({
     if (status.kind === 'feasible') {
       return language === 'en'
         ? 'Your ingredients can meet every nutrient target. Tap Next to formulate.'
-        : 'آپ کے اجزاء تمام غذائی اہداف پورا کر سکتے ہیں۔ آگے بڑھنے کے لیے Next دبائیں۔';
+        : 'آپ کے منتخب کردہ اجزاء تمام غذائی ضرورتیں پوری کرتے ہیں۔ آگے بڑھنے کے لیے "اگلا" بٹن دبائیں۔';
     }
     if (status.kind === 'no_targets') {
       return language === 'en'
         ? "Without a target range we can't check if your selection is enough."
-        : 'ہدف کی غیر موجودگی میں جانچ ممکن نہیں۔';
+        : 'جانور کی ضرورت کے بغیر غذائیت کی جانچ ممکن نہیں۔';
     }
     if (status.kind === 'pending') {
       // Name the exact sections and how many are still needed, e.g.
@@ -664,12 +707,12 @@ function FeasibilityGuide({
       const parts = status.missingCategories.map((k) => {
         const cat = INGREDIENT_CATEGORIES[k as keyof typeof INGREDIENT_CATEGORIES];
         const name = cat?.[language === 'en' ? 'titleEn' : 'titleUr'] ?? k;
-        return language === 'en' ? `${cat?.min ?? 1} from ${name}` : `${name} سے ${cat?.min ?? 1}`;
+        return language === 'en' ? `${cat?.min ?? 1} from ${name}` : `${name} (کم از کم ${cat?.min ?? 1})`;
       });
       const list = parts.join(language === 'en' ? ' and ' : ' اور ');
       return language === 'en'
         ? `Choose ${list}. Then we can check the animal's targets for you.`
-        : `${list} منتخب کریں۔ پھر ہم جانور کے اہداف کی جانچ کر دیں گے۔`;
+        : `${list} منتخب کریں تا کہ جانور کے اہداف پورے ہو سکیں۔`;
     }
     return '';
   })();
@@ -785,22 +828,33 @@ function FeasibilityGuide({
     );
   }
 
-  // Fallback — feasible / pending / no_targets all render this simple card
+  // Fallback — feasible / pending / no_targets all render this minimalist card
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={status.kind}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2 }}
-        className={`rounded-lg border-2 p-4 flex gap-3 ${palette.bg} ${palette.border} ${palette.text}`}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.18 }}
+        className={`rounded-xl border-2 px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-3 shadow-2xs ${palette.bg} ${palette.border} ${palette.text}`}
       >
-        <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${palette.icon}`} />
-        <div className="space-y-1">
-          <p className="font-semibold">{title}</p>
-          {subtitle && <p className="text-sm leading-relaxed opacity-90">{subtitle}</p>}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${palette.icon}`} />
+          <div className="min-w-0 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <span className="font-extrabold text-xs sm:text-sm tracking-tight whitespace-nowrap">{title}</span>
+            {subtitle && (
+              <span className="hidden sm:inline text-xs opacity-80 truncate ltr:border-l rtl:border-r border-slate-300 ltr:pl-2 rtl:pr-2">
+                {subtitle}
+              </span>
+            )}
+          </div>
         </div>
+        {status.kind === 'pending' && (
+          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 whitespace-nowrap flex-shrink-0">
+            {language === 'en' ? 'Guidance' : 'ہدایت'}
+          </span>
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -886,19 +940,19 @@ function SkipValidationOffer({
           <p className="text-[13px] font-bold text-slate-800">
             {language === 'en'
               ? 'Already have your own mix?'
-              : 'آپ کے پاس پہلے سے اپنا فارمولا ہے؟'}
+              : 'کیا آپ کا اپنا فارمولا پہلے سے موجود ہے؟'}
           </p>
           <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">
             {language === 'en'
               ? 'Pick just the ingredients you already feed and continue. We will still calculate the nutrition and show you which targets are met — you only lose the automatic balancing.'
-              : 'صرف وہی اجزاء منتخب کریں جو آپ پہلے سے دیتے ہیں اور آگے بڑھیں۔ ہم پھر بھی غذائیت کا حساب کریں گے اور بتائیں گے کون سے اہداف پورے ہوئے — صرف خودکار توازن دستیاب نہیں ہوگا۔'}
+              : 'اگر آپ اپنے فارم کا تجربہ شدہ فارمولا چیک کرنا چاہتے ہیں تو وہی اجزاء منتخب کر کے آگے بڑھیں۔ ہم اگلے مرحلے میں غذائیت کا مکمل حساب پیش کریں گے۔'}
           </p>
           <button
             onClick={onSkip}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition-colors tap-transparent"
           >
             <SkipForward className="w-3.5 h-3.5" />
-            {language === 'en' ? 'Skip checks and continue' : 'جانچ چھوڑ کر آگے بڑھیں'}
+            {language === 'en' ? 'Skip checks and continue' : 'جانچ چھوڑیں اور آگے بڑھیں ➔'}
           </button>
         </div>
       </div>
@@ -1128,7 +1182,7 @@ export function Step2Ingredients({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="space-y-8"
+        className="space-y-3 sm:space-y-4"
       >
         <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
@@ -1169,11 +1223,13 @@ export function Step2Ingredients({
           />
         ) : (
           <>
-            <FeasibilityGuide
-              language={language}
-              status={feasibility}
-              onAddIngredient={onIngredientToggle}
-            />
+            <div className="sticky top-14 sm:top-16 z-20 py-0.5 bg-white/95 backdrop-blur-md transition-all">
+              <FeasibilityGuide
+                language={language}
+                status={feasibility}
+                onAddIngredient={onIngredientToggle}
+              />
+            </div>
             {/* Offer the escape hatch whenever the user is blocked — keyed off
                 the same condition that disables Next, so there is never a state
                 with a locked button and no way past it. */}
@@ -1184,10 +1240,11 @@ export function Step2Ingredients({
         )}
 
         {/* Re-keyed by customVersion so newly-added ingredients appear immediately. */}
-        <div className="space-y-8" key={customVersion}>
+        <div className="space-y-5 sm:space-y-6 mt-3" key={customVersion}>
           {Object.entries(INGREDIENT_CATEGORIES).map(([categoryKey, category]) => (
             <IngredientGroup
               key={categoryKey}
+              categoryKey={categoryKey}
               title={category[language === 'en' ? 'titleEn' : 'titleUr']}
               language={language}
               ingredients={getCategoryIngredientKeys(categoryKey as keyof typeof INGREDIENT_CATEGORIES)}

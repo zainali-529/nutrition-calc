@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Sans+Arabic:wght@400..800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -379,4 +380,28 @@ input,
 select,
 textarea {
   @apply transition-colors duration-200;
+}
+
+/* Safe Area Inset Helpers for Mobile & Capacitor */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mb-safe-bottom {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Modern Urdu Typography Rule */
+[lang="ur"],
+.font-urdu,
+html[lang="ur"] body,
+body[lang="ur"] {
+  font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', var(--font-urdu), 'Segoe UI', Tahoma, Geneva, sans-serif !important;
+  line-height: 1.75;
 }

@@ -658,31 +658,31 @@ export function getIngredientIcon(key: string): string {
 export const INGREDIENT_CATEGORIES = {
   energy: {
     titleEn: 'Energy Sources',
-    titleUr: 'توانائی کے ذرائع',
+    titleUr: 'توانائی والے اجزاء (دانے اور طاقت)',
     min: 1,
     ingredients: INGREDIENTS.filter((i) => i.category === 'energy').map((i) => i.key),
   },
   protein: {
     titleEn: 'Protein Sources',
-    titleUr: 'پروٹین کے ذرائع',
+    titleUr: 'پروٹین والے اجزاء (کھلیں اور ہضم)',
     min: 1,
     ingredients: INGREDIENTS.filter((i) => i.category === 'protein').map((i) => i.key),
   },
   fiber: {
     titleEn: 'Bran & Fiber',
-    titleUr: 'چوکر اور فائبر',
+    titleUr: 'چوکر اور فائبر (معدہ و ہاضمہ)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'fiber').map((i) => i.key),
   },
   fat: {
     titleEn: 'Fats & Oils',
-    titleUr: 'چکنائی اور تیل',
+    titleUr: 'چکنائی اور تیل (بائی پاس فیٹ)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'fat').map((i) => i.key),
   },
   supplement: {
     titleEn: 'Supplements & Minerals',
-    titleUr: 'سپلیمنٹس اور معدنیات',
+    titleUr: 'معدنیات اور نمکیات (چونا پتھر، نمک، سوڈا)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'supplement').map((i) => i.key),
   },
@@ -732,37 +732,37 @@ export function categoryOfIngredient(key: string): IngredientCategory | null {
 export const STAGES = {
   dairy_cow: {
     en: ['Early Lactation (0–100 days)', 'Mid Lactation (100–200 days)', 'Late Lactation (200–305 days)', 'Dry Period (60 days before calving)'],
-    ur: ['شروع کا دودھ (0-100 دن)', 'درمیانی دودھ (100-200 دن)', 'آخری دودھ (200-305 دن)', 'خشک دور (60 دن)'],
+    ur: ['ابتدائی دودھ (0-100 دن)', 'درمیانی دودھ (100-200 دن)', 'آخری دودھ (200-305 دن)', 'خشک دور (سوئنے سے 60 دن پہلے)'],
   },
   dairy_buffalo: {
     en: ['Early Lactation (0–100 days)', 'Mid Lactation (100–200 days)', 'Late Lactation (200–305 days)', 'Dry Period (60 days before calving)'],
-    ur: ['شروع کا دودھ', 'درمیانی دودھ', 'آخری دودھ', 'خشک دور'],
+    ur: ['ابتدائی دودھ (0-100 دن)', 'درمیانی دودھ (100-200 دن)', 'آخری دودھ (200-305 دن)', 'خشک دور (سوئنے سے 60 دن پہلے)'],
   },
   heifer: {
     en: ['Calf (3–6 months)', 'Growing Heifer (6–15 months)', 'Pregnant Heifer (15+ months)'],
-    ur: ['بچہ (3-6 ماہ)', 'بڑھتی بچھڑی (6-15 ماہ)', 'گابھن بچھڑی'],
+    ur: ['کتڑی / وچھڑی (3-6 ماہ)', 'بڑھتی بچھڑی (6-15 ماہ)', 'گابھن بچھڑی (15+ ماہ)'],
   },
   fattening_bull: {
     en: ['Starter (100–200 kg)', 'Grower (200–300 kg)', 'Finisher (>300 kg)'],
-    ur: ['ابتدائی (100-200 کلو)', 'بڑھوتری (200-300 کلو)', 'تیاری (>300 کلو)'],
+    ur: ['ابتدائی وزن (100-200 کلو)', 'بڑھوتری وزن (200-300 کلو)', 'فائنل تیاری (300+ کلو)'],
   },
   dairy_goat: {
     en: ['Early Lactation', 'Mid/Late Lactation', 'Late Pregnancy', 'Dry Period'],
-    ur: ['شروع کا دودھ', 'درمیانی/آخری دودھ', 'آخری حمل', 'خشک دور'],
+    ur: ['شروع کا دودھ', 'درمیانی / آخری دودھ', 'آخری حمل (گابھن)', 'خشک دور (ڈرائے)'],
   },
   fattening_goat: {
     en: ['Grower (15–25 kg)', 'Finisher (25–40 kg)'],
-    ur: ['بڑھوتری (15-25 کلو)', 'تیاری (25-40 کلو)'],
+    ur: ['بڑھوتری وزن (15-25 کلو)', 'فائنل تیاری (25-40 کلو)'],
   },
 } as const;
 
 export const ANIMALS = [
   { id: 'dairy_cow',      icon: '🐄', image: '/images/animals/dairy_cow.jpg',      labelEn: 'Dairy Cow',           labelUr: 'دودھ والی گائے' },
   { id: 'dairy_buffalo',  icon: '🐃', image: '/images/animals/dairy_buffalo.jpg',  labelEn: 'Dairy Buffalo',       labelUr: 'دودھ والی بھینس' },
-  { id: 'heifer',         icon: '🐄', image: '/images/animals/heifer.jpg',         labelEn: 'Heifer (Cow/Buffalo)', labelUr: 'بچھڑی (گائے/بھینس)' },
-  { id: 'fattening_bull', icon: '🐂', image: '/images/animals/fattening_bull.jpg', labelEn: 'Fattening Bull',      labelUr: 'موٹا کرنے والا بیل' },
+  { id: 'heifer',         icon: '🐄', image: '/images/animals/heifer.jpg',         labelEn: 'Heifer (Cow/Buffalo)', labelUr: 'بچھڑی / کٹڑی (گائے/بھینس)' },
+  { id: 'fattening_bull', icon: '🐂', image: '/images/animals/fattening_bull.jpg', labelEn: 'Fattening Bull',      labelUr: 'کٹڑا / وچھڑا (گوشت کے لیے)' },
   { id: 'dairy_goat',     icon: '🐐', image: '/images/animals/dairy_goat.jpg',     labelEn: 'Dairy Goat',          labelUr: 'دودھ والی بکری' },
-  { id: 'fattening_goat', icon: '🐐', image: '/images/animals/fattening_goat.jpg', labelEn: 'Fattening Goat',      labelUr: 'موٹا کرنے والی بکری' },
+  { id: 'fattening_goat', icon: '🐐', image: '/images/animals/fattening_goat.jpg', labelEn: 'Fattening Goat',      labelUr: 'بکرا / چھترا (گوشت کے لیے)' },
 ];
 
 // ================================================================================
