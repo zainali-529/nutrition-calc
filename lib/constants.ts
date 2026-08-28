@@ -658,31 +658,31 @@ export function getIngredientIcon(key: string): string {
 export const INGREDIENT_CATEGORIES = {
   energy: {
     titleEn: 'Energy Sources',
-    titleUr: 'توانائی کے ذرائع',
+    titleUr: 'توانائی والے اجزاء (دانے اور طاقت)',
     min: 1,
     ingredients: INGREDIENTS.filter((i) => i.category === 'energy').map((i) => i.key),
   },
   protein: {
     titleEn: 'Protein Sources',
-    titleUr: 'پروٹین کے ذرائع',
+    titleUr: 'پروٹین والے اجزاء (کھلیں اور ہضم)',
     min: 1,
     ingredients: INGREDIENTS.filter((i) => i.category === 'protein').map((i) => i.key),
   },
   fiber: {
     titleEn: 'Bran & Fiber',
-    titleUr: 'چوکر اور فائبر',
+    titleUr: 'چوکر اور فائبر (معدہ و ہاضمہ)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'fiber').map((i) => i.key),
   },
   fat: {
     titleEn: 'Fats & Oils',
-    titleUr: 'چکنائی اور تیل',
+    titleUr: 'چکنائی اور تیل (بائی پاس فیٹ)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'fat').map((i) => i.key),
   },
   supplement: {
     titleEn: 'Supplements & Minerals',
-    titleUr: 'سپلیمنٹس اور معدنیات',
+    titleUr: 'معدنیات اور نمکیات (چونا پتھر، نمک، سوڈا)',
     min: 0,
     ingredients: INGREDIENTS.filter((i) => i.category === 'supplement').map((i) => i.key),
   },

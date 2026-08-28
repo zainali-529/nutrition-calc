@@ -34,18 +34,18 @@ export function WhyThisFormula({ language, diagnostics, batchSize, costPremium }
   if (!hasAnything) return null;
 
   const t = {
-    title:      language === 'en' ? 'Why this formula?' : 'یہ فارمولا کیوں؟',
-    subtitle:   language === 'en' ? 'The constraints that shaped the recipe' : 'فارمولا کی وجہ',
-    atMin:      language === 'en' ? 'at minimum' : 'کم از کم پر',
-    atMax:      language === 'en' ? 'at maximum' : 'زیادہ سے زیادہ پر',
+    title:      language === 'en' ? 'Why this formula?' : 'فارمولے کی سائنسی وجہ',
+    subtitle:   language === 'en' ? 'The constraints that shaped the recipe' : 'جانور کی غذائی ضرورت اور لاگت کا تجزیہ',
+    atMin:      language === 'en' ? 'at minimum' : 'کم از کم ضرورت پر',
+    atMax:      language === 'en' ? 'at maximum' : 'زیادہ سے زیادہ حد پر',
     target:     language === 'en' ? 'target' : 'ہدف',
-    atCap:      language === 'en' ? 'at its cap' : 'حد پر',
+    atCap:      language === 'en' ? 'at its cap' : 'مقررہ حد پر',
     of:         language === 'en' ? 'of' : 'کا',
     batch:      language === 'en' ? 'batch' : 'بیچ',
-    nutrientsHead: language === 'en' ? 'Nutrient bounds hit' : 'ہدف کی حدود',
-    capsHead:      language === 'en' ? 'Ingredient caps maxed' : 'اجزاء کی زیادہ سے زیادہ حد',
-    unusedHead:    language === 'en' ? 'Not used (not cost-effective)' : 'استعمال نہیں ہوا',
-    costPremiumLabel: language === 'en' ? 'Premium over cheapest:' : 'سستے سے زائد قیمت:',
+    nutrientsHead: language === 'en' ? 'Nutrient bounds hit' : 'غذائیت کے اہداف کی حد',
+    capsHead:      language === 'en' ? 'Ingredient caps maxed' : 'اجزاء کی محفوظ حد',
+    unusedHead:    language === 'en' ? 'Not used (not cost-effective)' : 'شامل نہیں کیا گیا (مہنگا ہونے کی وجہ سے)',
+    costPremiumLabel: language === 'en' ? 'Premium over cheapest:' : 'سستے فارمولے سے زائد قیمت:',
   };
 
   return (

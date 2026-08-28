@@ -34,10 +34,10 @@ interface Step3FormulaProps {
 
 /** Bilingual names for the 4 LP modes, used in the "showing X recipe" line. */
 const MODE_LABEL: Record<OptimisationMode, { en: string; ur: string }> = {
-  min_cost:    { en: 'Cheapest',    ur: 'سستا' },
-  balanced:    { en: 'Balanced',    ur: 'متوازن' },
-  max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین' },
-  max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی' },
+  min_cost:    { en: 'Cheapest',    ur: 'سستا ترین (کم لاگت)' },
+  balanced:    { en: 'Balanced',    ur: 'متوازن (بہترین توازن)' },
+  max_protein: { en: 'Max Protein', ur: 'زیادہ پروٹین (بڑھوتری)' },
+  max_energy:  { en: 'Max Energy',  ur: 'زیادہ توانائی (طاقت و دودھ)' },
 };
 
 export function Step3Formula({
@@ -239,17 +239,17 @@ export function Step3Formula({
   }, [autoBalanceOnMount]);
 
   const t = {
-    formulaEditor: language === 'en' ? 'Formula Editor' : 'فارمولا ایڈیٹر',
+    formulaEditor: language === 'en' ? 'Formula Editor' : 'فارمولا کی تیاری (کلو مقدار)',
     weight: language === 'en' ? 'Weight (kg)' : 'وزن (کلو)',
-    price: language === 'en' ? 'Price/kg' : 'قیمت فی کلو',
+    price: language === 'en' ? 'Price/kg' : 'قیمت فی کلو (Rs)',
     total: language === 'en' ? 'Total' : 'کل',
     nutrients: language === 'en' ? 'Nutritional Summary' : 'غذائی خلاصہ',
     protein: language === 'en' ? 'Protein (CP)' : 'پروٹین',
-    energy: language === 'en' ? 'Energy (ME)' : 'توانائی (ME)',
-    fiber: language === 'en' ? 'Fiber (NDF)' : 'فائبر (NDF)',
+    energy: language === 'en' ? 'Energy (ME)' : 'توانائی',
+    fiber: language === 'en' ? 'Fiber (NDF)' : 'فائبر',
     adf: language === 'en' ? 'ADF' : 'ADF',
     fat: language === 'en' ? 'Fat' : 'چکنائی',
-    dm: language === 'en' ? 'Dry Matter' : 'خشک مادہ',
+    dm: language === 'en' ? 'Dry Matter' : 'خشک مادہ (DM)',
     tdn: language === 'en' ? 'TDN' : 'TDN',
     starch: language === 'en' ? 'Starch' : 'نشاستہ',
     ash: language === 'en' ? 'Ash' : 'راکھ',
@@ -299,7 +299,7 @@ export function Step3Formula({
       <div className="text-xs text-gray-500 -mt-2">
         {language === 'en'
           ? '*Concentrate mix only (fed with forage/hay/silage). All values on DM basis.'
-          : '*صرف کانسنٹریٹ (چارہ/گھاس/سائیلج کے ساتھ)۔ تمام اقدار خشک مادہ پر۔'}
+          : '*صرف ونڈہ فارمولا (سبز چارے یا سائیلج کے ساتھ دیا جاتا ہے)۔'}
       </div>
 
       {/* Auto-Formulate — least-cost LP solver */}
@@ -311,7 +311,7 @@ export function Step3Formula({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-sm font-extrabold text-[#0e3b5e]">
-                {language === 'en' ? 'Auto-Formulate' : 'خودکار فارمولا'}
+                {language === 'en' ? 'Auto-Formulate' : 'خودکار فارمولا (سائز اور توازن)'}
               </h4>
               {(() => {
                 const lockCount = formula.filter((f) => f.locked).length;
@@ -328,14 +328,14 @@ export function Step3Formula({
               {afMode
                 ? (language === 'en'
                     ? <>Showing the <strong>{MODE_LABEL[afMode].en}</strong> recipe. Tap another to compare.</>
-                    : <>یہ <strong>{MODE_LABEL[afMode].ur}</strong> فارمولا ہے۔ موازنے کے لیے دوسرا دبائیں۔</>)
+                    : <>یہ <strong>{MODE_LABEL[afMode].ur}</strong> فارمولا ہے۔ موازنے کے لیے دوسرا آپشن چنائیں۔</>)
                 : formula.some((f) => f.locked)
                   ? (language === 'en'
                       ? 'Optimises unlocked ingredients while keeping locked ones fixed.'
-                      : 'غیر مقفل اجزاء کو بہتر کرتا ہے، مقفل اجزاء ثابت رہتے ہیں۔')
+                      : 'مقفل اجزاء ثابت رہیں گے اور باقی اجزاء خودکار متوازن ہوں گے۔')
                   : (language === 'en'
                       ? 'Pick how you want the mix optimised for this animal and stage.'
-                      : 'اس جانور اور مرحلے کے لیے فارمولا کیسے بنایا جائے، منتخب کریں۔')}
+                      : 'جانور اور مرحلے کی ضرورت کے مطابق بہترین فارمولا منتخب کریں:')}
             </p>
           </div>
         </div>
@@ -343,10 +343,10 @@ export function Step3Formula({
         {/* 4 optimisation mode buttons */}
         <div className="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([
-            { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا',          tipEn: 'Minimise cost',                       tipUr: 'کم قیمت' },
-            { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'ہر غذائی جزو کو حد کے درمیان رکھیں' },
-            { mode: 'max_protein', icon: <Beef   className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین',   tipEn: 'Richest in CP (kg)',                  tipUr: 'زیادہ پروٹین' },
-            { mode: 'max_energy',  icon: <Zap    className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی',  tipEn: 'Highest ME (Mcal)',                   tipUr: 'زیادہ توانائی' },
+            { mode: 'min_cost',    icon: <Coins  className="w-4 h-4" />, labelEn: 'Cheapest',    labelUr: 'سستا ترین',      tipEn: 'Minimise cost',                       tipUr: 'کم ترین لاگت پر فارمولا بنائیں' },
+            { mode: 'balanced',    icon: <Target className="w-4 h-4" />, labelEn: 'Balanced',    labelUr: 'متوازن',         tipEn: 'Centre every nutrient in its range',  tipUr: 'تمام ضرورتوں کو بہترین توازن دیں' },
+            { mode: 'max_protein', icon: <Beef   className="w-4 h-4" />, labelEn: 'Max Protein', labelUr: 'زیادہ پروٹین',   tipEn: 'Richest in CP (kg)',                  tipUr: 'جانور کی تیزی سے بڑھوتری کے لیے' },
+            { mode: 'max_energy',  icon: <Zap    className="w-4 h-4" />, labelEn: 'Max Energy',  labelUr: 'زیادہ توانائی',  tipEn: 'Highest ME (Mcal)',                   tipUr: 'زیادہ دودھ اور توانائی کے لیے' },
           ] as const).map((m) => {
             const busy = afBusyMode === m.mode;
             const anyBusy = afBusyMode !== null;

@@ -84,7 +84,7 @@ function usageTier(maxInclusion: number) {
   if (maxInclusion >= 25) {
     return {
       key: 'free' as const,
-      en: 'Use freely', ur: 'کھل کر استعمال',
+      en: 'Use freely', ur: 'بغیر کسی پابندی کے استعمال کریں',
       chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       icon: '👍',
     };
@@ -92,14 +92,14 @@ function usageTier(maxInclusion: number) {
   if (maxInclusion >= 5) {
     return {
       key: 'medium' as const,
-      en: 'Medium amount', ur: 'درمیانی مقدار',
+      en: 'Medium amount', ur: 'اعتدال میں شامل کریں',
       chip: 'bg-amber-50 text-amber-800 border-amber-200',
       icon: '⚖️',
     };
   }
   return {
     key: 'small' as const,
-    en: 'Small amount only', ur: 'تھوڑی مقدار',
+    en: 'Small amount only', ur: 'صرف کم مقدار رکھیں',
     chip: 'bg-rose-50 text-rose-700 border-rose-200',
     icon: '⚠️',
   };
@@ -681,12 +681,12 @@ function FeasibilityGuide({
   // headline states the ACTION, not the problem — "Add one more ingredient"
   // tells the farmer what to do; "Adjust your selection" does not.
   const title = (() => {
-    if (status.kind === 'feasible')   return language === 'en' ? "Looks good — you're ready" : 'سب ٹھیک ہے — آپ تیار ہیں';
+    if (status.kind === 'feasible')   return language === 'en' ? "Looks good — you're ready" : 'فارمولا تیار ہے — اگلا مرحلہ منتخب کریں';
     if (status.kind === 'no_targets') return language === 'en' ? 'Pick an animal and stage first' : 'پہلے جانور اور مرحلہ منتخب کریں';
-    if (status.kind === 'pending')    return language === 'en' ? 'Keep selecting'   : 'منتخب کرتے رہیں';
+    if (status.kind === 'pending')    return language === 'en' ? 'Keep selecting'   : 'اجزاء کا انتخاب جاری رکھیں';
     const oneTapFixes = status.analysis?.fixes.some((f) => f.kind === 'exact_fix');
-    if (oneTapFixes) return language === 'en' ? 'Add one more ingredient' : 'ایک اور جزو شامل کریں';
-    return language === 'en' ? 'Add a few more ingredients' : 'مزید اجزاء شامل کریں';
+    if (oneTapFixes) return language === 'en' ? 'Add one more ingredient' : 'فارمولا مکمل کرنے کے لیے ۱ مزید جزو چنیں';
+    return language === 'en' ? 'Add a few more ingredients' : 'توازن کے لیے کچھ اور اجزاء شامل کریں';
   })();
 
   // Subtitle for non-infeasible states (the infeasible state renders a richer body).
@@ -694,12 +694,12 @@ function FeasibilityGuide({
     if (status.kind === 'feasible') {
       return language === 'en'
         ? 'Your ingredients can meet every nutrient target. Tap Next to formulate.'
-        : 'آپ کے اجزاء تمام غذائی اہداف پورا کر سکتے ہیں۔ آگے بڑھنے کے لیے Next دبائیں۔';
+        : 'آپ کے منتخب کردہ اجزاء تمام غذائی ضرورتیں پوری کرتے ہیں۔ آگے بڑھنے کے لیے "اگلا" بٹن دبائیں۔';
     }
     if (status.kind === 'no_targets') {
       return language === 'en'
         ? "Without a target range we can't check if your selection is enough."
-        : 'ہدف کی غیر موجودگی میں جانچ ممکن نہیں۔';
+        : 'جانور کی ضرورت کے بغیر غذائیت کی جانچ ممکن نہیں۔';
     }
     if (status.kind === 'pending') {
       // Name the exact sections and how many are still needed, e.g.
@@ -707,12 +707,12 @@ function FeasibilityGuide({
       const parts = status.missingCategories.map((k) => {
         const cat = INGREDIENT_CATEGORIES[k as keyof typeof INGREDIENT_CATEGORIES];
         const name = cat?.[language === 'en' ? 'titleEn' : 'titleUr'] ?? k;
-        return language === 'en' ? `${cat?.min ?? 1} from ${name}` : `${name} سے ${cat?.min ?? 1}`;
+        return language === 'en' ? `${cat?.min ?? 1} from ${name}` : `${name} (کم از کم ${cat?.min ?? 1})`;
       });
       const list = parts.join(language === 'en' ? ' and ' : ' اور ');
       return language === 'en'
         ? `Choose ${list}. Then we can check the animal's targets for you.`
-        : `${list} منتخب کریں۔ پھر ہم جانور کے اہداف کی جانچ کر دیں گے۔`;
+        : `${list} منتخب کریں تا کہ جانور کے اہداف پورے ہو سکیں۔`;
     }
     return '';
   })();
@@ -940,19 +940,19 @@ function SkipValidationOffer({
           <p className="text-[13px] font-bold text-slate-800">
             {language === 'en'
               ? 'Already have your own mix?'
-              : 'آپ کے پاس پہلے سے اپنا فارمولا ہے؟'}
+              : 'کیا آپ کا اپنا فارمولا پہلے سے موجود ہے؟'}
           </p>
           <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">
             {language === 'en'
               ? 'Pick just the ingredients you already feed and continue. We will still calculate the nutrition and show you which targets are met — you only lose the automatic balancing.'
-              : 'صرف وہی اجزاء منتخب کریں جو آپ پہلے سے دیتے ہیں اور آگے بڑھیں۔ ہم پھر بھی غذائیت کا حساب کریں گے اور بتائیں گے کون سے اہداف پورے ہوئے — صرف خودکار توازن دستیاب نہیں ہوگا۔'}
+              : 'اگر آپ اپنے فارم کا تجربہ شدہ فارمولا چیک کرنا چاہتے ہیں تو وہی اجزاء منتخب کر کے آگے بڑھیں۔ ہم اگلے مرحلے میں غذائیت کا مکمل حساب پیش کریں گے۔'}
           </p>
           <button
             onClick={onSkip}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition-colors tap-transparent"
           >
             <SkipForward className="w-3.5 h-3.5" />
-            {language === 'en' ? 'Skip checks and continue' : 'جانچ چھوڑ کر آگے بڑھیں'}
+            {language === 'en' ? 'Skip checks and continue' : 'جانچ چھوڑیں اور آگے بڑھیں ➔'}
           </button>
         </div>
       </div>
