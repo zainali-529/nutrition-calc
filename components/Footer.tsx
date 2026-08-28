@@ -106,7 +106,7 @@ export function Footer({
         {/* Navigation Controls Row — shown on steps 1–4 */}
         {isNavigable && (
           <div className="flex items-center justify-between gap-2.5 sm:gap-4 sm:pb-2 sm:border-b sm:border-slate-100">
-            {/* Back Button */}
+            {/* Back Button — Left in LTR (English), Right in RTL (Urdu) */}
             <div className="flex-1 max-w-[130px] sm:max-w-[160px]">
               {currentStep > 0 && onBack ? (
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
@@ -160,7 +160,7 @@ export function Footer({
               </div>
             </div>
 
-            {/* Next Button */}
+            {/* Next Button — Right in LTR (English), Left in RTL (Urdu) */}
             <div className="flex-1 max-w-[130px] sm:max-w-[180px]">
               <motion.div whileHover={{ scale: canProceed ? 1.02 : 1 }} whileTap={{ scale: canProceed ? 0.97 : 1 }}>
                 <Button
@@ -195,7 +195,7 @@ export function Footer({
                 alt="RumiCalc Logo"
                 className="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded-lg shadow-xs group-hover:scale-105 transition-transform"
               />
-              <span className="font-extrabold text-sm sm:text-base tracking-tight">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight inline-flex items-center" dir="ltr">
                 <span className="text-[#0e3b5e]">Rumi</span>
                 <span className="text-[#558b2f]">Calc</span>
               </span>

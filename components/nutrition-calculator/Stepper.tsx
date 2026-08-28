@@ -25,11 +25,11 @@ const STEP_LABELS = {
     { title: 'Download', desc: 'Export & share formula' },
   ],
   ur: [
-    { title: 'جانور منتخب کریں', desc: 'مویشی کی قسم منتخب کریں' },
-    { title: 'اجزاء منتخب کریں', desc: 'چارے کے اجزاء منتخب کریں' },
-    { title: 'فارمولا بنائیں', desc: 'متوازن ریسپی بنائیں' },
-    { title: 'حالت دیکھیں', desc: 'غذائی اقدار چیک کریں' },
-    { title: 'ڈاؤن لوڈ کریں', desc: 'فارمولا محفوظ کریں' },
+    { title: 'جانور کا انتخاب', desc: 'جانور اور مرحلہ منتخب کریں' },
+    { title: 'اجزاء کا انتخاب', desc: 'ونڈہ کے اجزاء منتخب کریں' },
+    { title: 'فارمولا کی تیاری', desc: 'متوازن ونڈہ تیار کریں' },
+    { title: 'غذائی جائزہ', desc: 'خوراک کے اجزاء چیک کریں' },
+    { title: 'فارمولا محفوظ کریں', desc: 'پرنٹ یا شیئر کریں' },
   ],
 };
 
@@ -118,7 +118,7 @@ export function Stepper({
                       {/* Connector Line */}
                       {idx < totalSteps - 1 && (
                         <motion.div
-                          className="absolute -right-1/2 top-8 w-full h-1 origin-left"
+                          className="absolute ltr:-right-1/2 rtl:-left-1/2 top-8 w-full h-1 ltr:origin-left rtl:origin-right"
                           initial={{ scaleX: 0 }}
                           animate={{ scaleX: isCompleted || currentStep > idx ? 1 : 0 }}
                           transition={{ duration: 0.6, ease: 'easeInOut' }}
@@ -193,16 +193,6 @@ export function Stepper({
                         </p>
                       </div>
 
-                      {/* Completion Indicator */}
-                      {isCompleted && !isActive && (
-                        <motion.div
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-[#558b2f] rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md"
-                        >
-                          ✓
-                        </motion.div>
-                      )}
                     </div>
                   </motion.div>
                 );

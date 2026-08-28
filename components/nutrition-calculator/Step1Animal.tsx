@@ -22,6 +22,15 @@ function formatRange(r: { min: number; max: number }, decimals: number, unit = '
   return `${r.min.toFixed(decimals)}–${r.max.toFixed(decimals)}${unit}`;
 }
 
+/** Split stage label into main title and parenthesized range e.g. "Early Lactation" and "(0–100 days)". */
+function parseStageLabel(stage: string): { title: string; subtitle?: string } {
+  const match = stage.match(/^(.*?)\s*(\(.*\))$/);
+  if (match) {
+    return { title: match[1].trim(), subtitle: match[2].trim() };
+  }
+  return { title: stage };
+}
+
 function TargetCard({
   language,
   range,
@@ -30,10 +39,10 @@ function TargetCard({
   range: NutrientRange;
 }) {
   const t = {
-    title:     language === 'en' ? 'Concentrate Mix Targets' : 'کانسنٹریٹ ہدف',
+    title:     language === 'en' ? 'Concentrate Mix Targets' : 'ونڈہ فارمولا کے غذائی اہداف',
     subtitle:  language === 'en'
       ? 'For the concentrate portion only — animal also receives forage, hay, or silage. All values on DM basis.'
-      : 'صرف کانسنٹریٹ کے لیے — جانور کو سبز چارہ، گھاس یا سائیلج بھی ملے گا۔ تمام اقدار خشک مادہ پر۔',
+      : 'صرف ونڈہ خوارک کے لیے — جانور کو پٹھا (سبز چارہ) یا توڑی علیحدہ دی جائے گی۔',
     protein:   language === 'en' ? 'Crude Protein' : 'پروٹین',
     energy:    language === 'en' ? 'Energy (ME)' : 'توانائی',
     tdn:       language === 'en' ? 'TDN' : 'TDN',
@@ -145,14 +154,10 @@ export function Step1Animal({
   const activeRange = getNutritionRange(selectedAnimal, selectedStage);
 
   const t = {
-    selectAnimal: language === 'en' ? 'Select Livestock Type' : 'مویشی کی قسم منتخب کریں',
-    selectStage:  language === 'en' ? 'Select Production Stage' : 'پیداواری مرحلہ منتخب کریں',
+    selectAnimal: language === 'en' ? 'Select Livestock Type' : 'اپنے جانور کا انتخاب کریں',
+    selectStage:  language === 'en' ? 'Select Production Stage' : 'جانور کی حالت / مرحلہ منتخب کریں',
     next:         language === 'en' ? 'Next' : 'اگلا',
     back:         language === 'en' ? 'Back' : 'واپس',
-    // The TMR calculator has shipped (/tmr) — this used to say "coming soon".
-    concentrateBanner: language === 'en'
-      ? 'Building a CONCENTRATE mix — fed with fresh forage, hay, or silage. For a complete diet, use the TMR calculator in the header.'
-      : 'آپ ایک کانسنٹریٹ فارمولا بنا رہے ہیں — سبز چارہ، گھاس یا سائیلج کے ساتھ۔ مکمل راشن کے لیے اوپر TMR کیلکولیٹر استعمال کریں۔',
   };
 
   return (
@@ -162,18 +167,10 @@ export function Step1Animal({
       exit={{ opacity: 0, y: -20 }}
       className="space-y-6 sm:space-y-8"
     >
-      {/* Quick-start templates — only shown when the parent provides a handler
-          AND the user hasn't yet picked an animal. Once they engage with the
-          wizard manually, we hide the gallery to reduce visual clutter. */}
-      {onUseTemplate && !selectedAnimal && (
+      {/* Quick-start templates Accordion — Always visible on Step 1, collapsed by default */}
+      {onUseTemplate && (
         <QuickStartTemplates language={language} onUseTemplate={onUseTemplate} />
       )}
-
-      {/* Concentrate-vs-TMR Banner */}
-      <div className="bg-amber-50/80 border border-amber-200/90 rounded-xl px-4 py-3 flex items-start gap-3 shadow-xs">
-        <span className="text-xl flex-shrink-0 leading-tight">🌾</span>
-        <p className="text-xs text-amber-900 leading-relaxed font-medium">{t.concentrateBanner}</p>
-      </div>
 
       {/* Animal Selection */}
       <div>
@@ -201,22 +198,30 @@ export function Step1Animal({
             <span className="text-2xl">📅</span>
             {t.selectStage}
           </h3>
-          <div className="grid grid-cols-1 gap-2.5">
-            {stageLabels.map((stage, idx) => (
-              <motion.button
-                key={idx}
-                onClick={() => onStageSelect(idx)}
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                className={`min-h-[48px] px-4 py-3 rounded-xl border-2 transition-all font-medium text-left text-sm sm:text-base tap-transparent ${
-                  selectedStage === idx
-                    ? 'border-[#0e3b5e] bg-[#0e3b5e]/5 text-[#0e3b5e] font-bold shadow-xs'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-[#0e3b5e]/40'
-                }`}
-              >
-                {stage}
-              </motion.button>
-            ))}
+          <div className="grid grid-cols-2 gap-2.5">
+            {stageLabels.map((stage, idx) => {
+              const { title, subtitle } = parseStageLabel(stage);
+              return (
+                <motion.button
+                  key={idx}
+                  onClick={() => onStageSelect(idx)}
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`min-h-[58px] px-3 py-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center tap-transparent ${
+                    selectedStage === idx
+                      ? 'border-[#0e3b5e] bg-[#0e3b5e]/5 text-[#0e3b5e] font-extrabold shadow-xs ring-1 ring-[#0e3b5e]/20'
+                      : 'border-slate-200 bg-white text-slate-700 font-semibold hover:border-[#0e3b5e]/40 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-xs sm:text-sm font-extrabold leading-tight">{title}</span>
+                  {subtitle && (
+                    <span className="text-[10px] sm:text-xs font-semibold text-slate-500 opacity-90 mt-0.5 leading-tight">
+                      {subtitle}
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </motion.div>
       )}

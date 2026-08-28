@@ -103,6 +103,12 @@ export function NutritionCalculator() {
   useEffect(() => {
     if (!hasSeenOnboarding()) setOnboardingOpen(true);
   }, []);
+
+  // Synchronise document language & direction attribute for CSS [lang="ur"] and font rendering
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'ur' ? 'rtl' : 'ltr';
+  }, [language]);
   const closeOnboarding = useCallback(() => {
     markOnboardingSeen();
     setOnboardingOpen(false);
@@ -376,7 +382,7 @@ export function NutritionCalculator() {
   })();
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${language === 'ur' ? 'font-urdu' : ''}`} lang={language} dir={language === 'ur' ? 'rtl' : 'ltr'}>
       {/* Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
@@ -398,7 +404,7 @@ export function NutritionCalculator() {
               />
               <div className="hidden sm:block min-w-0">
                 <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-tight tracking-tight truncate flex items-center gap-1.5">
-                  <span className="inline-flex items-baseline tracking-tight font-extrabold"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
+                  <span className="inline-flex items-baseline tracking-tight font-extrabold" dir="ltr"><span className="text-[#0e3b5e]">Rumi</span><span className="text-[#558b2f]">Calc</span></span>
                   <span className="text-[10px] sm:text-xs font-bold text-[#0e3b5e] bg-[#0e3b5e]/5 border border-[#0e3b5e]/20 px-2 py-0.5 rounded-full">
                     {language === 'en' ? 'Concentrate' : 'ونڈہ'}
                   </span>

@@ -371,7 +371,43 @@ function IngredientCard({
   );
 }
 
+const CATEGORY_THEMES: Record<
+  string,
+  {
+    bg: string;
+    border: string;
+    titleColor: string;
+  }
+> = {
+  energy: {
+    bg: 'bg-gradient-to-br from-amber-50/80 via-amber-50/30 to-orange-50/30',
+    border: 'border-amber-300/80 hover:border-amber-400',
+    titleColor: 'text-amber-950',
+  },
+  protein: {
+    bg: 'bg-gradient-to-br from-blue-50/80 via-slate-50/30 to-indigo-50/30',
+    border: 'border-blue-300/80 hover:border-blue-400',
+    titleColor: 'text-blue-950',
+  },
+  fiber: {
+    bg: 'bg-gradient-to-br from-emerald-50/80 via-teal-50/30 to-green-50/30',
+    border: 'border-emerald-300/80 hover:border-emerald-400',
+    titleColor: 'text-emerald-950',
+  },
+  fat: {
+    bg: 'bg-gradient-to-br from-orange-50/80 via-amber-50/30 to-rose-50/30',
+    border: 'border-orange-300/80 hover:border-orange-400',
+    titleColor: 'text-orange-950',
+  },
+  supplement: {
+    bg: 'bg-gradient-to-br from-purple-50/80 via-slate-50/30 to-violet-50/30',
+    border: 'border-purple-300/80 hover:border-purple-400',
+    titleColor: 'text-purple-950',
+  },
+};
+
 function IngredientGroup({
+  categoryKey,
   title,
   language,
   ingredients,
@@ -382,6 +418,7 @@ function IngredientGroup({
   onIngredientInfo,
   onIngredientDelete,
 }: {
+  categoryKey: string;
   title: string;
   language: 'en' | 'ur';
   ingredients: string[];
@@ -394,6 +431,12 @@ function IngredientGroup({
   /** Invoked when the user clicks the trash icon on a custom-ingredient card. */
   onIngredientDelete: (ingredientKey: string) => void;
 }) {
+  const theme = CATEGORY_THEMES[categoryKey] || {
+    bg: 'bg-slate-50/80',
+    border: 'border-slate-300/80',
+    titleColor: 'text-slate-900',
+  };
+
   const isValid = selected.length >= minRequired;
   const needed = Math.max(0, minRequired - selected.length);
 
@@ -414,8 +457,8 @@ function IngredientGroup({
   })();
 
   const statusStyle = minRequired === 0
-    ? (selected.length > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')
-    : (isValid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800');
+    ? (selected.length > 0 ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300' : 'bg-slate-200/70 text-slate-700 border-slate-300')
+    : (isValid ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300' : 'bg-amber-100/90 text-amber-900 border-amber-300');
 
   // Count of solver-recommended items sitting in this section, so the user knows
   // to look here even before scrolling to the highlighted card.
@@ -425,19 +468,19 @@ function IngredientGroup({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-3"
+      className={`rounded-2xl border-2 p-3.5 sm:p-5 transition-all space-y-3.5 shadow-2xs ${theme.bg} ${theme.border}`}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="text-lg font-bold flex items-center gap-2">
+        <h3 className={`text-base sm:text-lg font-extrabold flex items-center gap-2 ${theme.titleColor}`}>
           {title}
           {recoHere > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
               <Sparkles className="w-2.5 h-2.5" />
               {recoHere} {language === 'en' ? 'suggested' : 'تجویز'}
             </span>
           )}
         </h3>
-        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyle}`}>
+        <span className={`text-xs font-extrabold px-3 py-1 rounded-full border shadow-2xs ${statusStyle}`}>
           {status}
           {minRequired > 0 && !isValid && (
             <span className="ml-1 font-normal opacity-70">
@@ -785,22 +828,33 @@ function FeasibilityGuide({
     );
   }
 
-  // Fallback — feasible / pending / no_targets all render this simple card
+  // Fallback — feasible / pending / no_targets all render this minimalist card
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={status.kind}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2 }}
-        className={`rounded-lg border-2 p-4 flex gap-3 ${palette.bg} ${palette.border} ${palette.text}`}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.18 }}
+        className={`rounded-xl border-2 px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-3 shadow-2xs ${palette.bg} ${palette.border} ${palette.text}`}
       >
-        <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${palette.icon}`} />
-        <div className="space-y-1">
-          <p className="font-semibold">{title}</p>
-          {subtitle && <p className="text-sm leading-relaxed opacity-90">{subtitle}</p>}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${palette.icon}`} />
+          <div className="min-w-0 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <span className="font-extrabold text-xs sm:text-sm tracking-tight whitespace-nowrap">{title}</span>
+            {subtitle && (
+              <span className="hidden sm:inline text-xs opacity-80 truncate ltr:border-l rtl:border-r border-slate-300 ltr:pl-2 rtl:pr-2">
+                {subtitle}
+              </span>
+            )}
+          </div>
         </div>
+        {status.kind === 'pending' && (
+          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 whitespace-nowrap flex-shrink-0">
+            {language === 'en' ? 'Guidance' : 'ہدایت'}
+          </span>
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -1128,7 +1182,7 @@ export function Step2Ingredients({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="space-y-8"
+        className="space-y-3 sm:space-y-4"
       >
         <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
@@ -1169,11 +1223,13 @@ export function Step2Ingredients({
           />
         ) : (
           <>
-            <FeasibilityGuide
-              language={language}
-              status={feasibility}
-              onAddIngredient={onIngredientToggle}
-            />
+            <div className="sticky top-14 sm:top-16 z-20 py-0.5 bg-white/95 backdrop-blur-md transition-all">
+              <FeasibilityGuide
+                language={language}
+                status={feasibility}
+                onAddIngredient={onIngredientToggle}
+              />
+            </div>
             {/* Offer the escape hatch whenever the user is blocked — keyed off
                 the same condition that disables Next, so there is never a state
                 with a locked button and no way past it. */}
@@ -1184,10 +1240,11 @@ export function Step2Ingredients({
         )}
 
         {/* Re-keyed by customVersion so newly-added ingredients appear immediately. */}
-        <div className="space-y-8" key={customVersion}>
+        <div className="space-y-5 sm:space-y-6 mt-3" key={customVersion}>
           {Object.entries(INGREDIENT_CATEGORIES).map(([categoryKey, category]) => (
             <IngredientGroup
               key={categoryKey}
+              categoryKey={categoryKey}
               title={category[language === 'en' ? 'titleEn' : 'titleUr']}
               language={language}
               ingredients={getCategoryIngredientKeys(categoryKey as keyof typeof INGREDIENT_CATEGORIES)}
