@@ -117,12 +117,12 @@ export function NutrientCard({
   }
 
   const hint = !range
-    ? (language === 'en' ? 'no target' : 'ہدف نہیں')
+    ? (language === 'en' ? 'no target' : 'معلوماتی')
     : status === 'success'
-      ? (language === 'en' ? 'on target' : 'ہدف پر')
+      ? (language === 'en' ? 'on target' : '✓ متوازن (ہدف کے مطابق)')
       : value < range.min
-        ? (language === 'en' ? 'below target' : 'ہدف سے کم')
-        : (language === 'en' ? 'above target' : 'ہدف سے زیادہ');
+        ? (language === 'en' ? 'below target' : '⚠️ ضرورت سے کم')
+        : (language === 'en' ? 'above target' : '⚠️ ضرورت سے زیادہ');
 
   return (
     <motion.div

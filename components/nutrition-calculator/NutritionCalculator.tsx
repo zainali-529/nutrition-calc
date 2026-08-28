@@ -22,6 +22,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { buildFormula, FormulaItem } from '@/lib/calculations';
 import { autoFormulate } from '@/lib/autoFormulate';
 import {
+  ANIMALS,
   CATEGORY_KEYS,
   categoryOfIngredient,
   emptyChosenIngredients,
@@ -502,6 +503,8 @@ export function NutritionCalculator() {
           onStepClick={handleStepClick}
           completedSteps={completedSteps}
           language={language}
+          selectedAnimal={selectedAnimal}
+          selectedStage={selectedStage}
         />
 
         {/* Steps Content */}

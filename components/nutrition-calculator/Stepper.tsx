@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Check, Lock } from 'lucide-react';
+import { ANIMALS, STAGES } from '@/lib/constants';
 
 interface StepperProps {
   currentStep: number;
@@ -9,6 +10,8 @@ interface StepperProps {
   onStepClick?: (step: number) => void;
   completedSteps?: number[];
   language?: 'en' | 'ur';
+  selectedAnimal?: string | null;
+  selectedStage?: number;
 }
 
 const STEP_ICONS = {
@@ -39,8 +42,18 @@ export function Stepper({
   onStepClick,
   completedSteps = [],
   language = 'en',
+  selectedAnimal,
+  selectedStage = 0,
 }: StepperProps) {
   const progressPercentage = Math.round(((currentStep + 1) / totalSteps) * 100);
+
+  const animalObj = selectedAnimal ? ANIMALS.find((a) => a.id === selectedAnimal) : null;
+  const animalName = animalObj ? (language === 'en' ? animalObj.labelEn : animalObj.labelUr) : null;
+  const stageName = selectedAnimal && STAGES[selectedAnimal as keyof typeof STAGES]
+    ? (language === 'en'
+        ? STAGES[selectedAnimal as keyof typeof STAGES]?.en[selectedStage]
+        : STAGES[selectedAnimal as keyof typeof STAGES]?.ur[selectedStage])
+    : null;
 
   return (
     <div className="w-full">
@@ -63,6 +76,14 @@ export function Stepper({
                 <p className="text-sm font-bold text-[#0e3b5e] leading-tight truncate">
                   {STEP_LABELS[language][currentStep].title}
                 </p>
+                {animalName && (
+                  <p className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-0.5 flex items-center gap-1">
+                    <span>{animalObj?.icon || '🐄'}</span>
+                    <span className="font-bold text-[#0e3b5e]">{animalName}</span>
+                    <span className="opacity-40">•</span>
+                    <span className="text-[#558b2f] font-semibold">{stageName}</span>
+                  </p>
+                )}
               </div>
             </div>
             <span className="text-xs font-bold text-[#0e3b5e] flex-shrink-0">{progressPercentage}%</span>
@@ -207,7 +228,17 @@ export function Stepper({
               className="space-y-2"
             >
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-semibold text-slate-500">Progress</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500">Progress</span>
+                  {animalName && (
+                    <span className="text-xs font-bold text-[#0e3b5e] bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <span>{animalObj?.icon || '🐄'}</span>
+                      <span>{animalName}</span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-[#558b2f]">{stageName}</span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs font-bold text-[#0e3b5e]">{progressPercentage}%</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">

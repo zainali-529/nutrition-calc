@@ -352,69 +352,89 @@ export interface Recommendation {
 /** Generate actionable recommendations for the current formulation. */
 export function generateRecommendations(
   nutrients: NutrientCalculation,
-  ranges?: NutrientRange | null
+  ranges?: NutrientRange | null,
+  language: 'en' | 'ur' = 'en'
 ): Recommendation[] {
   const r = ranges || DEFAULT_RANGES;
   const recs: Recommendation[] = [];
+  const isUr = language === 'ur';
 
   const push = (
-    nutrient: string,
+    nutrientEn: string,
+    nutrientUr: string,
     value: number,
     range: { min: number; max: number },
-    lowFix: string,
-    highFix: string,
+    lowFixEn: string,
+    lowFixUr: string,
+    highFixEn: string,
+    highFixUr: string,
     tol = 0
   ) => {
     const status = getNutrientStatus(value, range.min, range.max, tol);
+    const nutrient = isUr ? nutrientUr : nutrientEn;
     let recommendation: string;
     if (status === 'success') {
-      recommendation = `${nutrient} is within optimal range`;
+      recommendation = isUr ? `${nutrient} ہدف کے مطابق اور متوازن ہے` : `${nutrient} is within optimal range`;
     } else if (value < range.min) {
-      recommendation = lowFix;
+      recommendation = isUr ? lowFixUr : lowFixEn;
     } else {
-      recommendation = highFix;
+      recommendation = isUr ? highFixUr : highFixEn;
     }
     recs.push({ nutrient, status, recommendation, value, range });
   };
 
   push(
-    'Protein (CP)', nutrients.protein, r.protein,
+    'Protein (CP)', 'پروٹین (CP)', nutrients.protein, r.protein,
     'Protein too low — add Soybean meal, Canola meal, or Til khal',
+    'پروٹین کم ہے — سویابین میل، کینولا میل، یا تل کی کھال کا اضافہ کریں۔',
     'Protein too high — reduce oilcakes, add more energy sources like corn',
+    'پروٹین زیادہ ہے — کھال کی مقدار کم کریں اور مکئی کا تناسب بڑھائیں۔'
   );
   push(
-    'Energy (ME)', nutrients.energy, r.energy,
+    'Energy (ME)', 'توانائی (ME)', nutrients.energy, r.energy,
     'Energy too low — add corn, molasses, or bypass fat',
+    'توانائی کم ہے — مکئی، گڑ، یا بائی پاس فیٹ شامل کریں۔',
     'Energy too high — reduce concentrates, add more fiber',
-    0.15,
+    'توانائی زیادہ ہے — ونڈے کا تناسب کم کریں اور چارہ/فائبر بڑھائیں۔',
+    0.15
   );
   push(
-    'TDN', nutrients.tdn, r.tdn,
+    'TDN', 'ہضمیت (TDN)', nutrients.tdn, r.tdn,
     'Digestibility low — add corn or soybean meal',
+    'ہضمیت (TDN) کم ہے — مکئی یا سویابین میل کا تناسب بڑھائیں۔',
     'TDN too high — balance with more forage (hay, straw, silage)',
+    'ہضمیت (TDN) زیادہ ہے — سبز چارے یا سائیلج کا توازن رکھیں۔'
   );
   push(
-    'NDF (Fiber)', nutrients.fiber, r.fiber,
-    'Concentrate fiber is below target — consider adding wheat bran. (Ensure animal also receives good forage.)',
-    'Concentrate fiber too high — reduce wheat bran or hay; forage supplies rest of fiber separately',
+    'NDF (Fiber)', 'فائبر (NDF)', nutrients.fiber, r.fiber,
+    'Concentrate fiber is below target — consider adding wheat bran.',
+    'ونڈے میں فائبر کم ہے — گندم کا چوکر (چوکر گندم) شامل کریں۔',
+    'Concentrate fiber too high — reduce wheat bran or hay',
+    'ونڈے میں فائبر زیادہ ہے — چوکر گندم کی مقدار کم کریں۔'
   );
   push(
-    'Fat', nutrients.fat, r.fat,
-    'Fat too low — consider rice polish, sesame cake, or a small amount of bypass fat',
-    'Fat too high — reduce bypass fat and high-fat oilcakes (may depress fiber digestion)',
-    0.5,
+    'Fat', 'چکنائی (Fat)', nutrients.fat, r.fat,
+    'Fat too low — consider rice polish, sesame cake, or bypass fat',
+    'چکنائی کم ہے — رائس پالش، تلو کی کھال یا بائی پاس فیٹ شامل کریں۔',
+    'Fat too high — reduce bypass fat and high-fat oilcakes',
+    'چکنائی زیادہ ہے — بائی پاس فیٹ اور زیادہ چکنائی والی کھال کم کریں۔',
+    0.5
   );
   push(
-    'Calcium', nutrients.calcium, r.calcium,
+    'Calcium', 'کیلشیم (Ca)', nutrients.calcium, r.calcium,
     'Calcium too low — add limestone',
+    'کیلشیم کم ہے — چونا پتھر (لائم سٹون) کا اضافہ کریں۔',
     'Calcium too high — reduce limestone',
-    0.1,
+    'کیلشیم زیادہ ہے — چونا پتھر کی مقدار کم کریں۔',
+    0.1
   );
   push(
-    'Phosphorus', nutrients.phosphorus, r.phosphorus,
+    'Phosphorus', 'فاسفورس (P)', nutrients.phosphorus, r.phosphorus,
     'Phosphorus too low — add wheat bran or rice polish',
+    'فاسفورس کم ہے — چوکر گندم یا رائس پالش شامل کریں۔',
     'Phosphorus too high — reduce wheat bran / rice polish',
-    0.05,
+    'فاسفورس زیادہ ہے — چوکر گندم / رائس پالش کم کریں۔',
+    0.05
   );
 
   return recs;
